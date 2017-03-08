@@ -39,6 +39,9 @@ class JsV8InspectorClient : V8InspectorClient, v8_inspector::V8Inspector::Channe
         void quitMessageLoopOnPause() override;
         v8::Local<v8::Context> ensureDefaultContextInGroup(int contextGroupId) override;
 
+        std::unique_ptr<V8Inspector> inspector_;
+        v8::Isolate* isolate_;
+
     private:
         JsV8InspectorClient(v8::Isolate* isolate);
 
@@ -48,9 +51,7 @@ class JsV8InspectorClient : V8InspectorClient, v8_inspector::V8Inspector::Channe
         static jmethodID getInspectorMessageMethod;
         static jmethodID sendToDevToolsConsoleMethod;
 
-        v8::Isolate* isolate_;
         v8::Persistent<v8::Context> context_;
-        std::unique_ptr<V8Inspector> inspector_;
         std::unique_ptr<V8InspectorSession> session_;
         jobject connection;
         bool running_nested_loop_;

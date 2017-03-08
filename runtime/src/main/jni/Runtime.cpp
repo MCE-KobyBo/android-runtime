@@ -22,6 +22,7 @@
 #include "include/zipconf.h"
 #include <sstream>
 #include <dlfcn.h>
+#include "NetworkDomainCallbackHandlers.h"
 #include "sys/system_properties.h"
 #include "JsV8InspectorClient.h"
 
@@ -342,7 +343,7 @@ void Runtime::PassUncaughtExceptionToJsNative(JNIEnv* env, jobject obj, jthrowab
     NativeScriptException::CallJsFuncWithErr(errObj);
 }
 
-void Runtime::PassUncaughtExceptionFromWorkerToMainHandler(Local<String> message, Local<String> stackTrace, Local<String> filename, int lineno) {
+void Runtime::PassUncaughtExceptionFromWorkerToMainHandler(Local<v8::String> message, Local<v8::String> stackTrace, Local<v8::String> filename, int lineno) {
     JEnv env;
     auto runtimeClass = env.GetObjectClass(m_runtime);
 
@@ -501,6 +502,11 @@ Isolate* Runtime::PrepareV8Runtime(const string& filesPath, jstring nativeLibDir
     globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__exit"), FunctionTemplate::New(isolate, CallbackHandlers::ExitMethodCallback));
     globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__runtimeVersion"), ArgConverter::ConvertToV8String(isolate, NATIVE_SCRIPT_RUNTIME_VERSION), readOnlyFlags);
 
+
+    globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__responseReceived"), FunctionTemplate::New(isolate, NetworkDomainCallbackHandlers::ResponseReceivedCallback));
+    globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__requestWillBeSent"), FunctionTemplate::New(isolate, NetworkDomainCallbackHandlers::RequestWillBeSentCallback));
+    globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__dataReceived"), FunctionTemplate::New(isolate, NetworkDomainCallbackHandlers::DataReceivedCallback));
+    globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__loadingFinished"), FunctionTemplate::New(isolate, NetworkDomainCallbackHandlers::LoadingFinishedCallback));
     /*
      * Attach `Worker` object constructor only to the main thread (isolate)'s global object
      * Workers should not be created from within other Workers, for now
