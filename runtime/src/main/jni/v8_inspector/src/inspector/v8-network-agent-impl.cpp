@@ -12,9 +12,9 @@ static const char networkEnabled[] = "networkEnabled";
 
 V8NetworkAgentImpl::V8NetworkAgentImpl(V8InspectorSessionImpl* session, protocol::FrontendChannel* frontendChannel,
                                        protocol::DictionaryValue* state)
-    : Backend(),
+    : m_responses(),
       m_session(session),
-      m_frontend(frontendChannel, this),
+      m_frontend(frontendChannel),
       m_state(state),
       m_enabled(false) {
     Instance = this;
@@ -48,6 +48,18 @@ void V8NetworkAgentImpl::setExtraHTTPHeaders(ErrorString*, std::unique_ptr<proto
 
 void V8NetworkAgentImpl::getResponseBody(ErrorString*, const String& in_requestId, String* out_body, bool* out_base64Encoded) {
     // TODO: Pete:
+    auto p = 5;
+
+    auto it = m_responses.find(in_requestId.utf8());
+
+    if (it == m_responses.end()) {
+        // TODO: Pete: fix
+        auto c = 5;
+    } else {
+        v8_inspector::utils::NetworkRequestData* response = it->second;
+        *out_body = response->getData();
+        *out_base64Encoded = response->hasTextContent();
+    }
 }
 
 void V8NetworkAgentImpl::setCacheDisabled(ErrorString*, bool in_cacheDisabled) {

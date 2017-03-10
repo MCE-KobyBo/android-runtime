@@ -55,6 +55,29 @@ dependencies {
 	testCompile 'junit:junit:4.12'
 }
 
+repositories {
+	jcenter()
+	flatDir {
+		dirs 'src/F0', 'src/F1',
+				'src/F2', 'src/F3',
+				'src/F4', 'src/F5',
+				'src/F6', 'src/F7',
+				'src/F8', 'src/F9',
+				'src/F10', 'src/F11'
+	}
+}
+
+task addAarDependencies  {
+	FileTree tree = fileTree(dir: "$projectDir/src", include: ["**/*.aar"])
+	tree.each { File file ->
+		// remove the extension of the file (.aar)
+		def length = file.name.length() - 4
+		def fileName = file.name[0..<length]
+		println "\t+adding dependency: " + file.getAbsolutePath()
+		project.dependencies.add("compile", [name: fileName, ext: "aar"])
+	}
+}
+
 task deleteDist (type: Delete) {
 	doFirst {
         delete "$rootDir/dist"

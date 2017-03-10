@@ -31,7 +31,7 @@ var MyActivity = (function (_super) {
 
 //    	require("./tests/testsWithContext").run(this);
 //    	execute(); //run jasmine
-
+        require("globals");
     	var layout = new android.widget.LinearLayout(this);
     	layout.setOrientation(1);
     	this.setContentView(layout);
@@ -41,21 +41,50 @@ var MyActivity = (function (_super) {
     	layout.addView(textView);
 
     	var button = new android.widget.Button(this);
-    	button.setText("Hit me");
+    	button.setText("Get delayed (4) response");
     	layout.addView(button);
     	var counter = 0;
+
+    	var button2 = new android.widget.Button(this);
+    	button2.setText("Get Image");
+    	layout.addView(button2);
 
     	var Color = android.graphics.Color;
     	var colors = [Color.BLUE, Color.RED, Color.MAGENTA, Color.YELLOW, Color.parseColor("#FF7F50")];
     	var taps = 0;
 
-    	var dum = com.tns.tests.DummyClass.null;
+//    	var dum = com.tns.tests.DummyClass.null;
+        var http = require("http");
 
     	button.setOnClickListener(new android.view.View.OnClickListener("AppClickListener", {
     		onClick:  function() {
-    			button.setBackgroundColor(colors[taps % colors.length]);
-    			taps++;
+
+//    		http.getString("http://httpbin.org/delay/4").then(function (r) {
+//                //// Argument (r) is string!
+//                console.log("I got r: " + r);
+//            }, function (e) {
+//                //// Argument (e) is Error!
+//                console.log(e);
+//            });
+http.request({ url: "https://httpbin.org/get?myArg=123&boo=true", method: "GET", headers: { "XHCustom-Header": "My custom header1", "Agent-String": "Android"} }).then(function (response) {
+    //// Argument (response) is HttpResponse!
+    //// Content property of the response is HttpContent!
+    var str = response.content.toString();
+}, function (e) {
+    //// Argument (e) is Error!
+});
     		}}));
+
+    		button2.setOnClickListener(new android.view.View.OnClickListener("AppClickListener", {
+                		onClick:  function() {
+
+                		http.getImage("http://httpbin.org/image/jpeg", "myImage.jpeg").then(function (r) {
+                        }, function (e) {
+                            //// Argument (e) is Error!
+                            console.log(e);
+                        });
+
+                		}}));
     };
     MyActivity = __decorate([
         JavaProxy("com.tns.NativeScriptActivity")

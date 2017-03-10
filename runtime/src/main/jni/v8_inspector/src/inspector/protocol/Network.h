@@ -1027,7 +1027,6 @@ class  Initiator {
 
 class  Backend {
     public:
-        Backend() : m_responses() {}
         virtual ~Backend() { }
 
         virtual void enable(ErrorString*) = 0;
@@ -1048,7 +1047,7 @@ class  Backend {
 
 class  Frontend {
     public:
-        Frontend(FrontendChannel* frontendChannel, Backend* backend) : m_frontendChannel(frontendChannel), m_backend(backend) { }
+        Frontend(FrontendChannel* frontendChannel) : m_frontendChannel(frontendChannel) { }
         void requestWillBeSent(const String& requestId, const String& frameId, const String& loaderId, const String& documentURL, std::unique_ptr<protocol::Network::Request> request, double timestamp, std::unique_ptr<protocol::Network::Initiator> initiator, const Maybe<protocol::Network::Response>& redirectResponse = Maybe<protocol::Network::Response>(), const Maybe<String>& type = Maybe<String>());
         void requestServedFromCache(const String& requestId);
         void responseReceived(const String& requestId, const String& frameId, const String& loaderId, double timestamp, const String& type, std::unique_ptr<protocol::Network::Response> response);
@@ -1067,7 +1066,6 @@ class  Frontend {
         void flush();
     private:
         FrontendChannel* m_frontendChannel;
-        Backend* m_backend;
 };
 
 // ------------- Dispatcher.

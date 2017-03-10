@@ -8,6 +8,7 @@
 
 #include <include/v8.h>
 #include <v8_inspector/src/inspector/v8-network-agent-impl.h>
+#include <v8_inspector/src/inspector/utils/base64.h>
 #include "JsV8InspectorClient.h"
 #include "ArgConverter.h"
 
@@ -24,7 +25,7 @@ static void ResponseReceivedCallback(const v8::FunctionCallbackInfo<v8::Value>& 
 
     auto context = isolate->GetCurrentContext();
 
-    v8::Local<v8::Object> argsObj = args.Data()->ToObject();
+    v8::Local<v8::Object> argsObj = args[0]->ToObject();
 
     if ((!argsObj->Has(context, ArgConverter::ConvertToV8String(isolate, "requestId")).FromMaybe(false) ||
             !argsObj->Has(context, ArgConverter::ConvertToV8String(isolate, "frameId")).FromMaybe(false) ||
@@ -37,11 +38,11 @@ static void ResponseReceivedCallback(const v8::FunctionCallbackInfo<v8::Value>& 
 
     // TODO: Pete: using deprecated API as this is PoC
     auto requestId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "requestId"))->ToString();
-    auto frameId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "frameId"));
-    auto loaderId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "loaderId"));
-    auto timestamp = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "timestamp"));
+    auto frameId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "frameId"))->ToString();
+    auto loaderId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "loaderId"))->ToString();
     auto type = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "type"))->ToString();
     auto response = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "response"));
+    auto timeStamp = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "timeStamp"))->ToNumber()->IntegerValue();
 
     auto networkAgentInstance = V8NetworkAgentImpl::Instance;
 
@@ -49,10 +50,12 @@ static void ResponseReceivedCallback(const v8::FunctionCallbackInfo<v8::Value>& 
     v8::Local<v8::String> responseJson;
     auto maybeResponseJson = v8::JSON::Stringify(context, responseAsObj);
 
+    // TODO: Pete: fix
     if (!maybeResponseJson.ToLocal(&responseJson)) {
         auto p = 5;
     }
 
+    // TODO: Pete: fix
     auto cstr = ArgConverter::ConvertToString(responseJson).c_str();
     auto protocolResponseJson = protocol::parseJSON(cstr);
 
@@ -60,14 +63,16 @@ static void ResponseReceivedCallback(const v8::FunctionCallbackInfo<v8::Value>& 
 
     auto protocolResponseObj = protocol::Network::Response::parse(protocolResponseJson.get(), &errorSupport);
 
-    if (errorSupport.hasErrors()) {
-        auto p = 5;
-        auto errors = errorSupport.errors();
-        auto cerrors = errors.utf8();
-        auto v = 5;
-    }
+    auto requestIdString = ArgConverter::ConvertToString(requestId).c_str();
+    auto networkRequestData = new v8_inspector::utils::NetworkRequestData();
+    networkAgentInstance->m_responses.insert(std::make_pair(requestIdString, networkRequestData));
 
-    networkAgentInstance->m_frontend.responseReceived(ArgConverter::ConvertToString(requestId).c_str(), "frameId", "loaderId", 12345678, ArgConverter::ConvertToString(type).c_str(), std::move(protocolResponseObj));
+    networkAgentInstance->m_frontend.responseReceived(requestIdString,
+            ArgConverter::ConvertToString(frameId).c_str(),
+            ArgConverter::ConvertToString(loaderId).c_str(),
+            timeStamp,
+            ArgConverter::ConvertToString(type).c_str(),
+            std::move(protocolResponseObj));
 }
 
 static void RequestWillBeSentCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -77,13 +82,15 @@ static void RequestWillBeSentCallback(const v8::FunctionCallbackInfo<v8::Value>&
 
     auto context = isolate->GetCurrentContext();
 
-    v8::Local<v8::Object> argsObj = args.Data()->ToObject();
+    v8::Local<v8::Object> argsObj = args[0]->ToObject();
 
-    auto requestId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "requestId"));
-    auto frameId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "frameId"));
-    auto loaderId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "loaderId"));
+    auto requestId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "requestId"))->ToString();
+    auto frameId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "frameId"))->ToString();
+    auto loaderId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "loaderId"))->ToString();
     auto url = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "url"))->ToString();
     auto request = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "request"));
+    auto timeStamp = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "timeStamp"))->ToNumber()->IntegerValue();
+    auto typeArg = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "type"))->ToString();
 
     auto networkAgentInstance = V8NetworkAgentImpl::Instance;
 
@@ -101,13 +108,56 @@ static void RequestWillBeSentCallback(const v8::FunctionCallbackInfo<v8::Value>&
     protocol::ErrorSupport errorSupport;
 
     auto protocolResponseObj = protocol::Network::Request::parse(protocolRequestJson.get(), &errorSupport);
-    auto initiator = protocol::Network::Initiator::create().setType("Script").build();
+    auto initiator = protocol::Network::Initiator::create().setType(protocol::Network::Initiator::TypeEnum::Script).build();
 
-    networkAgentInstance->m_frontend.requestWillBeSent("2", "frameId", "loaderId", ArgConverter::ConvertToString(url).c_str(), std::move(protocolResponseObj), 123456789, std::move(initiator));
+    protocol::Maybe<String16> type(ArgConverter::ConvertToString(typeArg).c_str());
+    protocol::Maybe<protocol::Network::Response> emptyRedirect;
+    networkAgentInstance->m_frontend.requestWillBeSent(ArgConverter::ConvertToString(requestId).c_str(),
+            ArgConverter::ConvertToString(frameId).c_str(),
+            ArgConverter::ConvertToString(loaderId).c_str(),
+            ArgConverter::ConvertToString(url).c_str(),
+            std::move(protocolResponseObj),
+            timeStamp,
+            std::move(initiator),
+            emptyRedirect,
+            type);
 }
 
-static void DataReceivedCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void DataForRequestId(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    auto isolate = args.GetIsolate();
 
+    v8::HandleScope scope(isolate);
+
+    auto context = isolate->GetCurrentContext();
+
+    v8::Local<v8::Object> argsObj = args[0]->ToObject();
+
+    auto requestId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "requestId"))->ToString();
+    auto data = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "data"))->ToString();
+    auto hasTextContent = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "hasTextContent"))->ToBoolean();
+
+    auto networkAgentInstance = V8NetworkAgentImpl::Instance;
+    auto requestIdString = ArgConverter::ConvertToString(requestId).c_str();
+    auto dataString = ArgConverter::ConvertToString(data);
+    auto hasTextContentBool = hasTextContent->BooleanValue();
+
+    auto responses = networkAgentInstance->m_responses;
+    auto it = responses.find(requestIdString);
+
+    if (it == responses.end()) {
+        // TODO: Pete: fix
+        auto c = 5;
+    } else {
+        v8_inspector::utils::NetworkRequestData* response = it->second;
+
+        if (!hasTextContentBool) {
+            response->setData(base64_encode((unsigned char*) dataString.c_str(), dataString.size()));
+        } else {
+            response->setData(ArgConverter::ConvertToString(data));
+        }
+
+        response->setHasTextContent(hasTextContentBool);
+    }
 }
 
 static void LoadingFinishedCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -117,13 +167,14 @@ static void LoadingFinishedCallback(const v8::FunctionCallbackInfo<v8::Value>& a
 
     auto context = isolate->GetCurrentContext();
 
-    v8::Local<v8::Object> argsObj = args.Data()->ToObject();
+    v8::Local<v8::Object> argsObj = args[0]->ToObject();
 
     auto requestId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "requestId"))->ToString();
+    auto timeStamp = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "timeStamp"))->ToNumber()->IntegerValue();
 
     auto networkAgentInstance = V8NetworkAgentImpl::Instance;
 
-    networkAgentInstance->m_frontend.loadingFinished(ArgConverter::ConvertToString(requestId).c_str(), 123456789);
+    networkAgentInstance->m_frontend.loadingFinished(ArgConverter::ConvertToString(requestId).c_str(), timeStamp);
 }
 }
 }

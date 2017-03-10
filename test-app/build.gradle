@@ -11,6 +11,14 @@
 buildscript {
     repositories {
         jcenter()
+        flatDir {
+            dirs 'src/F0', 'src/F1',
+                    'src/F2', 'src/F3',
+                    'src/F4', 'src/F5',
+                    'src/F6', 'src/F7',
+                    'src/F8', 'src/F9',
+                    'src/F10', 'src/F11'
+        }
     }
 
     dependencies {
@@ -21,5 +29,13 @@ buildscript {
 allprojects {
     repositories {
         jcenter()
+        flatDir {
+            dirs 'src/F0', 'src/F1',
+                    'src/F2', 'src/F3',
+                    'src/F4', 'src/F5',
+                    'src/F6', 'src/F7',
+                    'src/F8', 'src/F9',
+                    'src/F10', 'src/F11'
+        }
     }
 }

@@ -502,10 +502,10 @@ Isolate* Runtime::PrepareV8Runtime(const string& filesPath, jstring nativeLibDir
     globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__exit"), FunctionTemplate::New(isolate, CallbackHandlers::ExitMethodCallback));
     globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__runtimeVersion"), ArgConverter::ConvertToV8String(isolate, NATIVE_SCRIPT_RUNTIME_VERSION), readOnlyFlags);
 
-
+    // TODO: Pete: attach as a sepparate __networkDebugger { } object only on DEBUG
     globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__responseReceived"), FunctionTemplate::New(isolate, NetworkDomainCallbackHandlers::ResponseReceivedCallback));
     globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__requestWillBeSent"), FunctionTemplate::New(isolate, NetworkDomainCallbackHandlers::RequestWillBeSentCallback));
-    globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__dataReceived"), FunctionTemplate::New(isolate, NetworkDomainCallbackHandlers::DataReceivedCallback));
+    globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__dataForRequestId"), FunctionTemplate::New(isolate, NetworkDomainCallbackHandlers::DataForRequestId));
     globalTemplate->Set(ArgConverter::ConvertToV8String(isolate, "__loadingFinished"), FunctionTemplate::New(isolate, NetworkDomainCallbackHandlers::LoadingFinishedCallback));
     /*
      * Attach `Worker` object constructor only to the main thread (isolate)'s global object

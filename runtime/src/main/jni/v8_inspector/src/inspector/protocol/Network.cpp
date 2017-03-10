@@ -466,7 +466,6 @@ void Frontend::requestServedFromCache(const String& requestId) {
 }
 
 void Frontend::responseReceived(const String& requestId, const String& frameId, const String& loaderId, double timestamp, const String& type, std::unique_ptr<protocol::Network::Response> response) {
-    // TODO: Pete: save response to map<reqId, response> so that it may be accessible from the backend dispatcher
     std::unique_ptr<protocol::DictionaryValue> jsonMessage = DictionaryValue::create();
     jsonMessage->setString("method", "Network.responseReceived");
     std::unique_ptr<protocol::DictionaryValue> paramsObject = DictionaryValue::create();
@@ -480,8 +479,6 @@ void Frontend::responseReceived(const String& requestId, const String& frameId, 
     if (m_frontendChannel) {
         m_frontendChannel->sendProtocolNotification(jsonMessage->toJSONString());
     }
-
-    m_backend->m_responses.insert(std::make_pair(requestId, std::move(response)));
 }
 
 void Frontend::dataReceived(const String& requestId, double timestamp, int dataLength, int encodedDataLength) {

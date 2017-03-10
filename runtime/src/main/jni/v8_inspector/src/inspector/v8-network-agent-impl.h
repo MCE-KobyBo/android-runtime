@@ -6,6 +6,7 @@
 #define V8_NETWORK_AGENT_IMPL_H
 
 #include <v8_inspector/src/inspector/protocol/Network.h>
+#include <v8_inspector/src/inspector/utils/v8-network-request-data.h>
 
 namespace v8_inspector {
 
@@ -35,6 +36,7 @@ class V8NetworkAgentImpl : public protocol::Network::Backend {
 
         static V8NetworkAgentImpl* Instance;
         protocol::Network::Frontend m_frontend;
+        std::map<std::string, v8_inspector::utils::NetworkRequestData*> m_responses;
 
     private:
         V8InspectorSessionImpl* m_session;
