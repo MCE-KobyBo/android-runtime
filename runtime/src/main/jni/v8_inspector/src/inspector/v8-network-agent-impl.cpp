@@ -58,7 +58,7 @@ void V8NetworkAgentImpl::getResponseBody(ErrorString*, const String& in_requestI
     } else {
         v8_inspector::utils::NetworkRequestData* response = it->second;
         *out_body = response->getData();
-        *out_base64Encoded = response->hasTextContent();
+        *out_base64Encoded = !response->hasTextContent();
     }
 }
 

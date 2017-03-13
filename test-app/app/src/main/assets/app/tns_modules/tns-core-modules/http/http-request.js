@@ -69,7 +69,7 @@ function onRequestComplete(requestId, result) {
     var type = "Document"
     // TODO: FIX ME!
     let hasTextContent = true;
-    if (leUrl.indexOf("image") != 0) {
+    if (leUrl.indexOf("image") != -1) {
         hasTextContent = false;
         type = "Image"
     }
@@ -80,7 +80,7 @@ function onRequestComplete(requestId, result) {
         // TODO: Hard coded type
         statusText: "OK",
         headers: responseHeaders,
-        mimeType: "text/plain",
+        mimeType: "document",
         fromDiskCache: false
     }
     var responseReceivedObj = {
@@ -93,10 +93,22 @@ function onRequestComplete(requestId, result) {
         timeStamp: getTimeStamp()
     }
 
-
-    __dataForRequestId({requestId: requestId, data: result.responseAsString, hasTextContent: hasTextContent })
     __responseReceived(responseReceivedObj);
     __loadingFinished({ requestId: requestId, timeStamp: getTimeStamp() });
+
+    var responseData;
+    if (!hasTextContent) {
+        var bitmap = result.responseAsImage;
+        var outputStream= new java.io.ByteArrayOutputStream();
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream);
+
+        var base64Image = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT);
+        responseData = base64Image
+    } else {
+        responseData = result.responseAsString;
+    }
+
+    __dataForRequestId({requestId: requestId, data: responseData, hasTextContent: hasTextContent });
     callbacks.resolveCallback({
         content: {
             raw: result.raw,
@@ -229,11 +241,9 @@ function request(options) {
                 url: requestObj.url,
                 request: requestObj,
                 timeStamp: getTimeStamp(),
-                type: options.type || "Document"
+                type: options.type || "document"
             };
             /////////
-
-            console.dir(requestWillBeSentObj);
 
             __requestWillBeSent(requestWillBeSentObj);
 

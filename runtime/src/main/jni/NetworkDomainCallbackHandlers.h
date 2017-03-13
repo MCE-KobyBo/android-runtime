@@ -15,7 +15,7 @@
 namespace tns {
 namespace NetworkDomainCallbackHandlers {
 static void ResponseReceivedCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
-    if (!args.Data()->IsObject()) {
+    if (!args[0]->IsObject()) {
         return;
     }
 
@@ -151,7 +151,7 @@ static void DataForRequestId(const v8::FunctionCallbackInfo<v8::Value>& args) {
         v8_inspector::utils::NetworkRequestData* response = it->second;
 
         if (!hasTextContentBool) {
-            response->setData(base64_encode((unsigned char*) dataString.c_str(), dataString.size()));
+            response->setData(dataString);
         } else {
             response->setData(ArgConverter::ConvertToString(data));
         }
