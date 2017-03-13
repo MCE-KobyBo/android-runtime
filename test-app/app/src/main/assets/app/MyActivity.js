@@ -57,6 +57,10 @@ var MyActivity = (function (_super) {
     	button4.setText("Post");
     	layout.addView(button4);
 
+        var button5 = new android.widget.Button(this);
+        button5.setText("POST request from worker");
+        layout.addView(button5);
+
     	var Color = android.graphics.Color;
     	var colors = [Color.BLUE, Color.RED, Color.MAGENTA, Color.YELLOW, Color.parseColor("#FF7F50")];
     	var taps = 0;
@@ -111,6 +115,14 @@ var MyActivity = (function (_super) {
             });
         });
 
+        var worker = new Worker("./httpworker");
+        worker.onerror = function(e) {
+            console.log("Error in worker: ");
+            console.dir(e);
+        }
+        button5.onClick(function() {
+            worker.postMessage({ type: "From worker" })
+        });
     };
     MyActivity = __decorate([
         JavaProxy("com.tns.NativeScriptActivity")

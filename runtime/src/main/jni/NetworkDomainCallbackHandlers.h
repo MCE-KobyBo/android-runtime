@@ -14,6 +14,10 @@
 
 namespace tns {
 namespace NetworkDomainCallbackHandlers {
+
+static const char* FrameId = "NativeScriptFrameId";
+static const char* LoaderId = "NativeScriptLoaderId";
+
 static void ResponseReceivedCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
     if (!args[0]->IsObject()) {
         return;
@@ -76,6 +80,10 @@ static void ResponseReceivedCallback(const v8::FunctionCallbackInfo<v8::Value>& 
 }
 
 static void RequestWillBeSentCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    if (!args[0]->IsObject()) {
+        return;
+    }
+
     auto isolate = args.GetIsolate();
 
     v8::HandleScope scope(isolate);
@@ -124,6 +132,10 @@ static void RequestWillBeSentCallback(const v8::FunctionCallbackInfo<v8::Value>&
 }
 
 static void DataForRequestId(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    if (!args[0]->IsObject()) {
+        return;
+    }
+
     auto isolate = args.GetIsolate();
 
     v8::HandleScope scope(isolate);
@@ -161,6 +173,10 @@ static void DataForRequestId(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 static void LoadingFinishedCallback(const v8::FunctionCallbackInfo<v8::Value>& args) {
+    if (!args[0]->IsObject()) {
+        return;
+    }
+
     auto isolate = args.GetIsolate();
 
     v8::HandleScope scope(isolate);

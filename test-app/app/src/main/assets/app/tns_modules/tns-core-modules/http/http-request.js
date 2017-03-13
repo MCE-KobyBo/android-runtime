@@ -241,7 +241,7 @@ function request(options) {
                 url: requestObj.url,
                 request: requestObj,
                 timeStamp: getTimeStamp(),
-                type: options.type || "document"
+                type: "Document"
             };
             /////////
 
