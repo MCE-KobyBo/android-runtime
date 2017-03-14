@@ -70,5 +70,5 @@ void V8NetworkAgentImpl::loadResource(const String& in_frameId, const String& in
     // TODO: Pete:
 }
 
-V8NetworkAgentImpl* V8NetworkAgentImpl::Instance;
+V8NetworkAgentImpl* V8NetworkAgentImpl::Instance = 0;
 }

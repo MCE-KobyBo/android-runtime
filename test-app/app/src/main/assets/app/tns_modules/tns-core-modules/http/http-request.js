@@ -4,9 +4,6 @@ var requestIdCounter = 0;
 var pendingRequests = {};
 var utils;
 
-var FrameId = "NativeScriptFrameId";
-var LoaderId = "NativeScriptLoaderId";
-
 function getTimeStamp() {
     var d = new Date();
     return Math.round(d.getTime() / 1000);
@@ -85,8 +82,6 @@ function onRequestComplete(requestId, result) {
     }
     var responseReceivedObj = {
         requestId: requestId,
-        frameId: FrameId,
-        loaderId: LoaderId,
         // TODO: Hard coded type
         type: type,
         response: responseObj,
@@ -99,11 +94,13 @@ function onRequestComplete(requestId, result) {
     var responseData;
     if (!hasTextContent) {
         var bitmap = result.responseAsImage;
-        var outputStream= new java.io.ByteArrayOutputStream();
-        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream);
+        if (bitmap) {
+            var outputStream= new java.io.ByteArrayOutputStream();
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream);
 
-        var base64Image = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT);
-        responseData = base64Image
+            var base64Image = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT);
+            responseData = base64Image
+        }
     } else {
         responseData = result.responseAsString;
     }
@@ -236,8 +233,6 @@ function request(options) {
 
             var requestWillBeSentObj = {
                 requestId: requestIdCounter,
-                frameId: FrameId,
-                loaderId: LoaderId,
                 url: requestObj.url,
                 request: requestObj,
                 timeStamp: getTimeStamp(),
