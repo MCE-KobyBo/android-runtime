@@ -56,56 +56,57 @@ function onRequestComplete(requestId, result) {
         }
     }
 
-    var responseHeaders = {};
-    var len = result.headers ? result.headers.size() : 0;
-    for (var i = 0; i < len; i++) {
-        var kvp = result.headers.get(i);
-        responseHeaders[kvp.key] = kvp.value;
-    }
-
-    var type = "Document"
-    // TODO: FIX ME!
-    let hasTextContent = true;
-    if (leUrl.indexOf("image") != -1) {
-        hasTextContent = false;
-        type = "Image"
-    }
-
-    var responseObj = {
-        url: leUrl,
-        status: result.statusCode,
-        // TODO: Hard coded type
-        statusText: "OK",
-        headers: responseHeaders,
-        mimeType: "document",
-        fromDiskCache: false
-    }
-    var responseReceivedObj = {
-        requestId: requestId,
-        // TODO: Hard coded type
-        type: type,
-        response: responseObj,
-        timeStamp: getTimeStamp()
-    }
-
-    __responseReceived(responseReceivedObj);
-    __loadingFinished({ requestId: requestId, timeStamp: getTimeStamp() });
-
-    var responseData;
-    if (!hasTextContent) {
-        var bitmap = result.responseAsImage;
-        if (bitmap) {
-            var outputStream= new java.io.ByteArrayOutputStream();
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream);
-
-            var base64Image = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT);
-            responseData = base64Image
+    if (__inspector && __inspector.isConnected) {
+        var responseHeaders = {};
+        var len = result.headers ? result.headers.size() : 0;
+        for (var i = 0; i < len; i++) {
+            var kvp = result.headers.get(i);
+            responseHeaders[kvp.key] = kvp.value;
         }
-    } else {
-        responseData = result.responseAsString;
+        var type = "Document"
+        // TODO: FIX ME!
+        let hasTextContent = true;
+        if (leUrl.indexOf("image") != -1) {
+            hasTextContent = false;
+            type = "Image"
+        }
+        var responseObj = {
+            url: leUrl,
+            status: result.statusCode,
+            // TODO: Hard coded type
+            statusText: "OK",
+            headers: responseHeaders,
+            mimeType: "Document",
+            fromDiskCache: false
+        }
+        var responseReceivedObj = {
+            requestId: requestId,
+            // TODO: Hard coded type
+            type: type,
+            response: responseObj,
+            timeStamp: getTimeStamp()
+        }
+
+        __inspector.responseReceived(responseReceivedObj);
+        __inspector.loadingFinished({ requestId: requestId, timeStamp: getTimeStamp() });
+
+        var responseData;
+        if (!hasTextContent) {
+            var bitmap = result.responseAsImage;
+            if (bitmap) {
+                var outputStream = new java.io.ByteArrayOutputStream();
+                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream);
+
+                var base64Image = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT);
+                responseData = base64Image
+            }
+        } else {
+            responseData = result.responseAsString;
+        }
+
+        __inspector.dataForRequestId({ requestId: requestId, data: responseData, hasTextContent: hasTextContent });
     }
 
-    __dataForRequestId({requestId: requestId, data: responseData, hasTextContent: hasTextContent });
     callbacks.resolveCallback({
         content: {
             raw: result.raw,
@@ -220,27 +221,29 @@ function request(options) {
             };
 
             /////////
-            leUrl = options.url;
-            var requestObj = {
-                url: options.url,
-                method: options.method,
-                headers: options.headers || { }
-            }
+            if (__inspector && __inspector.isConnected) {
+                leUrl = options.url;
+                var requestObj = {
+                    url: options.url,
+                    method: options.method,
+                    headers: options.headers || {}
+                }
 
-            if (options.content) {
-                requestObj.postData = options.content.toString();
-            }
+                if (options.content) {
+                    requestObj.postData = options.content.toString();
+                }
 
-            var requestWillBeSentObj = {
-                requestId: requestIdCounter,
-                url: requestObj.url,
-                request: requestObj,
-                timeStamp: getTimeStamp(),
-                type: "Document"
-            };
+                var requestWillBeSentObj = {
+                    requestId: requestIdCounter,
+                    url: requestObj.url,
+                    request: requestObj,
+                    timeStamp: getTimeStamp(),
+                    type: "Document"
+                };
+
+                __inspector.requestWillBeSent(requestWillBeSentObj);
+            }
             /////////
-
-            __requestWillBeSent(requestWillBeSentObj);
 
             pendingRequests[requestIdCounter] = callbacks;
             ensureCompleteCallback();

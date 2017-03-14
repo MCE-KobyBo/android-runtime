@@ -199,7 +199,6 @@ static void LoadingFinishedCallback(const v8::FunctionCallbackInfo<v8::Value>& a
     auto requestId = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "requestId"))->ToString();
     auto timeStamp = argsObj->Get(ArgConverter::ConvertToV8String(isolate, "timeStamp"))->ToNumber()->IntegerValue();
 
-
     networkAgentInstance->m_frontend.loadingFinished(ArgConverter::ConvertToString(requestId).c_str(), timeStamp);
 }
 }

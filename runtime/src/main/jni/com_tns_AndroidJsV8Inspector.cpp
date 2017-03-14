@@ -3,6 +3,7 @@
 #include <sstream>
 #include "JsV8InspectorClient.h"
 #include "ArgConverter.h"
+#include "Runtime.h"
 
 using namespace tns;
 using namespace std;

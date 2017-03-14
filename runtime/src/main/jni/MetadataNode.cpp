@@ -245,7 +245,7 @@ void MetadataNode::ClassAccessorGetterCallback(Local<String> property, const Pro
     }
 }
 
-void MetadataNode::NullObjectAccessorGetterCallback(Local<String> property,const PropertyCallbackInfo<Value>& info) {
+void MetadataNode::NullObjectAccessorGetterCallback(Local<String> property, const PropertyCallbackInfo<Value>& info) {
     try {
         DEBUG_WRITE("NullObjectAccessorGetterCallback called");
         auto isolate = info.GetIsolate();
