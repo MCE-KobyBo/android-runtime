@@ -1,10 +1,14 @@
-var common = require("./scroll-view-common");
-var utils = require("utils/utils");
-var enums = require("ui/enums");
-global.moduleMerge(common, exports);
-common.orientationProperty.onValueChanged = function scrollViewOrientationChanged(data) {
-    data.object._onOrientationChanged(data.oldValue, data.newValue);
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var scroll_view_common_1 = require("./scroll-view-common");
+__export(require("./scroll-view-common"));
 var ScrollView = (function (_super) {
     __extends(ScrollView, _super);
     function ScrollView() {
@@ -32,7 +36,7 @@ var ScrollView = (function (_super) {
             if (!this._android) {
                 return 0;
             }
-            return this._android.getScrollX() / utils.layout.getDisplayDensity();
+            return this._android.getScrollX() / scroll_view_common_1.layout.getDisplayDensity();
         },
         enumerable: true,
         configurable: true
@@ -42,34 +46,34 @@ var ScrollView = (function (_super) {
             if (!this._android) {
                 return 0;
             }
-            return this._android.getScrollY() / utils.layout.getDisplayDensity();
+            return this._android.getScrollY() / scroll_view_common_1.layout.getDisplayDensity();
         },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(ScrollView.prototype, "scrollableWidth", {
         get: function () {
-            if (!this._android || this.orientation !== enums.Orientation.horizontal) {
+            if (!this._android || this.orientation !== "horizontal") {
                 return 0;
             }
-            return this._android.getScrollableLength() / utils.layout.getDisplayDensity();
+            return this._android.getScrollableLength() / scroll_view_common_1.layout.getDisplayDensity();
         },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(ScrollView.prototype, "scrollableHeight", {
         get: function () {
-            if (!this._android || this.orientation !== enums.Orientation.vertical) {
+            if (!this._android || this.orientation !== "vertical") {
                 return 0;
             }
-            return this._android.getScrollableLength() / utils.layout.getDisplayDensity();
+            return this._android.getScrollableLength() / scroll_view_common_1.layout.getDisplayDensity();
         },
         enumerable: true,
         configurable: true
     });
     ScrollView.prototype.scrollToVerticalOffset = function (value, animated) {
-        if (this._android && this.orientation === enums.Orientation.vertical) {
-            value *= utils.layout.getDisplayDensity();
+        if (this._android && this.orientation === "vertical") {
+            value *= scroll_view_common_1.layout.getDisplayDensity();
             if (animated) {
                 this._android.smoothScrollTo(0, value);
             }
@@ -79,8 +83,8 @@ var ScrollView = (function (_super) {
         }
     };
     ScrollView.prototype.scrollToHorizontalOffset = function (value, animated) {
-        if (this._android && this.orientation === enums.Orientation.horizontal) {
-            value *= utils.layout.getDisplayDensity();
+        if (this._android && this.orientation === "horizontal") {
+            value *= scroll_view_common_1.layout.getDisplayDensity();
             if (animated) {
                 this._android.smoothScrollTo(value, 0);
             }
@@ -89,8 +93,8 @@ var ScrollView = (function (_super) {
             }
         }
     };
-    ScrollView.prototype._createUI = function () {
-        if (this.orientation === enums.Orientation.horizontal) {
+    ScrollView.prototype._createNativeView = function () {
+        if (this.orientation === "horizontal") {
             this._android = new org.nativescript.widgets.HorizontalScrollView(this._context);
         }
         else {
@@ -100,15 +104,16 @@ var ScrollView = (function (_super) {
             this._androidViewId = android.view.View.generateViewId();
         }
         this._android.setId(this._androidViewId);
+        return this._android;
     };
-    ScrollView.prototype._onOrientationChanged = function (oldValue, newValue) {
+    ScrollView.prototype._onOrientationChanged = function () {
         if (this._android) {
-            var parent = this.parent;
-            if (parent) {
-                parent._removeView(this);
+            var parent_1 = this.parent;
+            if (parent_1) {
+                parent_1._removeView(this);
             }
-            if (parent) {
-                parent._addView(this);
+            if (parent_1) {
+                parent_1._addView(this);
             }
         }
     };
@@ -126,14 +131,16 @@ var ScrollView = (function (_super) {
     };
     ScrollView.prototype._onScrollChanged = function () {
         if (this.android) {
+            // Event is only raised if the scroll values differ from the last time in order to wokraround a native Android bug.
+            // https://github.com/NativeScript/NativeScript/issues/2362
             var newScrollX = this.android.getScrollX();
             var newScrollY = this.android.getScrollY();
             if (newScrollX !== this._lastScrollX || newScrollY !== this._lastScrollY) {
                 this.notify({
                     object: this,
                     eventName: ScrollView.scrollEvent,
-                    scrollX: newScrollX / utils.layout.getDisplayDensity(),
-                    scrollY: newScrollY / utils.layout.getDisplayDensity()
+                    scrollX: newScrollX / scroll_view_common_1.layout.getDisplayDensity(),
+                    scrollY: newScrollY / scroll_view_common_1.layout.getDisplayDensity()
                 });
                 this._lastScrollX = newScrollX;
                 this._lastScrollY = newScrollY;
@@ -145,6 +152,5 @@ var ScrollView = (function (_super) {
         this.handler = null;
     };
     return ScrollView;
-}(common.ScrollView));
+}(scroll_view_common_1.ScrollViewBase));
 exports.ScrollView = ScrollView;
-//# sourceMappingURL=scroll-view.js.map

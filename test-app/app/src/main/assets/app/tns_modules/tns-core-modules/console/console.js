@@ -1,17 +1,42 @@
-var trace = require("trace");
-var platform = require("platform");
+"use strict";
+function __message(message, level) {
+    if (global.__consoleMessage) {
+        global.__consoleMessage(message, level);
+    }
+}
 var Console = (function () {
     function Console() {
         this.TAG = "JS";
-        this.dir = this.dump;
         this._timers = {};
         this._stripFirstTwoLinesRegEx = /^([^\n]*?\n){2}((.|\n)*)$/gmi;
     }
     Console.prototype.sprintf = function (message) {
+        //  discuss at: http://phpjs.org/functions/sprintf/
+        // original by: Ash Searle (http://hexmen.com/blog/)
+        // improved by: Michael White (http://getsprink.com)
+        // improved by: Jack
+        // improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+        // improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+        // improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+        // improved by: Dj
+        // improved by: Allidylls
+        //    input by: Paulo Freitas
+        //    input by: Brett Zamir (http://brett-zamir.me)
+        //   example 1: sprintf("%01.2f", 123.1);
+        //   returns 1: 123.10
+        //   example 2: sprintf("[%10s]", 'monkey');
+        //   returns 2: '[    monkey]'
+        //   example 3: sprintf("[%'#10s]", 'monkey');
+        //   returns 3: '[####monkey]'
+        //   example 4: sprintf("%d", 123456789012345);
+        //   returns 4: '123456789012345'
+        //   example 5: sprintf('%-03s', 'E');
+        //   returns 5: 'E00'
         var regex = /%%|%(\d+\$)?([-+\'#0 ]*)(\*\d+\$|\*|\d+)?(\.(\*\d+\$|\*|\d+))?([scboxXuideEfFgGj])/g;
         var a = arguments;
         var i = 0;
         var format = a[i++];
+        // pad()
         var pad = function (str, len, chr, leftJustify) {
             if (!chr) {
                 chr = ' ';
@@ -20,6 +45,7 @@ var Console = (function () {
                 .join(chr);
             return leftJustify ? str + padding : padding + str;
         };
+        // justify()
         var justify = function (value, prefix, leftJustify, minWidth, zeroPad, customPadChar) {
             var diff = minWidth - value.length;
             if (diff > 0) {
@@ -32,7 +58,9 @@ var Console = (function () {
             }
             return value;
         };
+        // formatBaseX()
         var formatBaseX = function (value, base, prefix, leftJustify, minWidth, precision, zeroPad) {
+            // Note: casts negative numbers to positive ones
             var number = value >>> 0;
             prefix = prefix && number && {
                 '2': '0b',
@@ -42,6 +70,7 @@ var Console = (function () {
             value = prefix + pad(number.toString(base), precision || 0, '0', false);
             return justify(value, prefix, leftJustify, minWidth, zeroPad);
         };
+        // formatString()
         var formatString = function (value, leftJustify, minWidth, precision, zeroPad, customPadChar) {
             if (precision != null) {
                 value = value.slice(0, precision);
@@ -49,11 +78,13 @@ var Console = (function () {
             return justify(value, '', leftJustify, minWidth, zeroPad, customPadChar);
         };
         var that = this;
+        // doFormat()
         var doFormat = function (substring, valueIndex, flags, minWidth, _, precision, type) {
             var number, prefix, method, textTransform, value;
             if (substring === '%%') {
                 return '%';
             }
+            // parse flags
             var leftJustify = false;
             var positivePrefix = '';
             var zeroPad = false;
@@ -83,6 +114,8 @@ var Console = (function () {
                         break;
                 }
             }
+            // parameters may be null, undefined, empty-string or real valued
+            // we want to ignore null, undefined and empty-string values
             if (!minWidth) {
                 minWidth = 0;
             }
@@ -95,6 +128,7 @@ var Console = (function () {
             else {
                 minWidth = +minWidth;
             }
+            // Note: undocumented perl feature:
             if (minWidth < 0) {
                 minWidth = -minWidth;
                 leftJustify = true;
@@ -114,6 +148,7 @@ var Console = (function () {
             else {
                 precision = +precision;
             }
+            // grab value using valueIndex if required?
             value = valueIndex ? a[valueIndex.slice(0, -1)] : a[i++];
             switch (type) {
                 case 's':
@@ -134,13 +169,14 @@ var Console = (function () {
                 case 'i':
                 case 'd':
                     number = +value || 0;
+                    // Plain Math.round doesn't just truncate
                     number = Math.round(number - number % 1);
                     prefix = number < 0 ? '-' : positivePrefix;
                     value = prefix + pad(String(Math.abs(number)), precision, '0', false);
                     return justify(value, prefix, leftJustify, minWidth, zeroPad);
                 case 'e':
                 case 'E':
-                case 'f':
+                case 'f': // Should handle locales (as per setlocale)
                 case 'F':
                 case 'g':
                 case 'G':
@@ -164,17 +200,18 @@ var Console = (function () {
         }
         var res = this.sprintf.apply(this, arguments);
         if (res === message) {
+            // we have more params but no format
             var args = Array.prototype.slice.call(arguments);
             return args.join(' ');
         }
         return res;
     };
     Console.prototype.timeMillis = function () {
-        return java.lang.System.nanoTime() / 1000000;
+        return java.lang.System.nanoTime() / 1000000; // 1 ms = 1000000 ns
     };
     Console.prototype.time = function (reportName) {
         var name = reportName ? '__' + reportName : '__internal_console_time__';
-        if (('undefined' === typeof (this._timers[name])) || (this._timers.hasOwnProperty(name))) {
+        if (this._timers[name] === undefined || this._timers.hasOwnProperty(name)) {
             this._timers[name] = this.timeMillis();
         }
         else {
@@ -203,10 +240,8 @@ var Console = (function () {
         if (!test) {
             Array.prototype.shift.apply(arguments);
             var formatedMessage = this.formatParams.apply(this, arguments);
-            this.error(formatedMessage, trace.messageType.error);
-            if (global.__consoleMessage) {
-                global.__consoleMessage(formatedMessage, "error");
-            }
+            this.error(formatedMessage, 3 /* error */);
+            __message(formatedMessage, "error");
         }
     };
     Console.prototype.info = function (message) {
@@ -214,7 +249,7 @@ var Console = (function () {
         for (var _i = 1; _i < arguments.length; _i++) {
             formatParams[_i - 1] = arguments[_i];
         }
-        this.logMessage(this.formatParams.apply(this, arguments), trace.messageType.info);
+        this.logMessage(this.formatParams.apply(this, arguments), 1 /* info */);
     };
     Console.prototype.warn = function (message) {
         var formatParams = [];
@@ -222,10 +257,8 @@ var Console = (function () {
             formatParams[_i - 1] = arguments[_i];
         }
         var formatedMessage = this.formatParams.apply(this, arguments);
-        this.logMessage(formatedMessage, trace.messageType.warn);
-        if (global.__consoleMessage) {
-            global.__consoleMessage(formatedMessage, "warning");
-        }
+        this.logMessage(formatedMessage, 2 /* warn */);
+        __message(formatedMessage, "warning");
     };
     Console.prototype.error = function (message) {
         var formatParams = [];
@@ -233,10 +266,8 @@ var Console = (function () {
             formatParams[_i - 1] = arguments[_i];
         }
         var formatedMessage = this.formatParams.apply(this, arguments);
-        this.logMessage(formatedMessage, trace.messageType.error);
-        if (global.__consoleMessage) {
-            global.__consoleMessage(formatedMessage, "error");
-        }
+        this.logMessage(formatedMessage, 3 /* error */);
+        __message(formatedMessage, "error");
     };
     Console.prototype.log = function (message) {
         var formatParams = [];
@@ -244,40 +275,38 @@ var Console = (function () {
             formatParams[_i - 1] = arguments[_i];
         }
         var formatedMessage = this.formatParams.apply(this, arguments);
-        this.logMessage(formatedMessage, trace.messageType.log);
-        if (global.__consoleMessage) {
-            global.__consoleMessage(formatedMessage, "log");
-        }
+        this.logMessage(formatedMessage, 0 /* log */);
+        __message(formatedMessage, "log");
     };
     Console.prototype.logMessage = function (message, messageType) {
         if (!global.android) {
+            // This case may be entered during heap snapshot where the global.android is not present
             return;
         }
         var arrayToLog = [];
         if (message.length > 4000) {
-            var i;
-            for (i = 0; i * 4000 < message.length; i++) {
+            for (var i = 0; i * 4000 < message.length; i++) {
                 arrayToLog.push(message.substr((i * 4000), 4000));
             }
         }
         else {
             arrayToLog.push(message);
         }
-        for (i = 0; i < arrayToLog.length; i++) {
+        for (var i = 0; i < arrayToLog.length; i++) {
             switch (messageType) {
-                case trace.messageType.log: {
+                case 0 /* log */: {
                     android.util.Log.v(this.TAG, arrayToLog[i]);
                     break;
                 }
-                case trace.messageType.warn: {
+                case 2 /* warn */: {
                     android.util.Log.w(this.TAG, arrayToLog[i]);
                     break;
                 }
-                case trace.messageType.error: {
+                case 3 /* error */: {
                     android.util.Log.e(this.TAG, arrayToLog[i]);
                     break;
                 }
-                case trace.messageType.info: {
+                case 1 /* info */: {
                     android.util.Log.i(this.TAG, arrayToLog[i]);
                     break;
                 }
@@ -297,7 +326,7 @@ var Console = (function () {
             result.push("=== dump(): object is 'null' ===");
             return result.join('');
         }
-        if ("undefined" === typeof obj) {
+        if (obj === undefined) {
             result.push("=== dump(): object is 'undefined' ===");
             return result.join('');
         }
@@ -338,16 +367,10 @@ var Console = (function () {
         result.push('=== dump(): finished ===');
         return result.join('');
     };
-    Console.prototype.dump = function (obj) {
+    Console.prototype.dir = function (obj) {
         var dump = this.createDump(obj);
-        if (platform.device.os === platform.platformNames.android) {
-            this.log(dump);
-        }
-        else if (platform.device.os === platform.platformNames.ios) {
-            console.log(dump);
-        }
+        this.log(dump);
     };
     return Console;
 }());
 exports.Console = Console;
-//# sourceMappingURL=console.js.map

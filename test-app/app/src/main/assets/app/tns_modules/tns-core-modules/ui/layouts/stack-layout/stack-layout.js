@@ -1,12 +1,14 @@
-var common = require("./stack-layout-common");
-var enums_1 = require("ui/enums");
-global.moduleMerge(common, exports);
-function setNativeOrientationProperty(data) {
-    var stackLayout = data.object;
-    var nativeView = stackLayout._nativeView;
-    nativeView.setOrientation(data.newValue === enums_1.Orientation.vertical ? org.nativescript.widgets.Orientation.vertical : org.nativescript.widgets.Orientation.horizontal);
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-common.StackLayout.orientationProperty.metadata.onSetNativeValue = setNativeOrientationProperty;
+var stack_layout_common_1 = require("./stack-layout-common");
+__export(require("./stack-layout-common"));
 var StackLayout = (function (_super) {
     __extends(StackLayout, _super);
     function StackLayout() {
@@ -26,10 +28,24 @@ var StackLayout = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    StackLayout.prototype._createUI = function () {
-        this._layout = new org.nativescript.widgets.StackLayout(this._context);
+    StackLayout.prototype._createNativeView = function () {
+        var layout = this._layout = new org.nativescript.widgets.StackLayout(this._context);
+        return layout;
     };
+    Object.defineProperty(StackLayout.prototype, stack_layout_common_1.orientationProperty.native, {
+        get: function () {
+            return "vertical";
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(StackLayout.prototype, stack_layout_common_1.orientationProperty.native, {
+        set: function (value) {
+            this._layout.setOrientation(value === "vertical" ? org.nativescript.widgets.Orientation.vertical : org.nativescript.widgets.Orientation.horizontal);
+        },
+        enumerable: true,
+        configurable: true
+    });
     return StackLayout;
-}(common.StackLayout));
+}(stack_layout_common_1.StackLayoutBase));
 exports.StackLayout = StackLayout;
-//# sourceMappingURL=stack-layout.js.map

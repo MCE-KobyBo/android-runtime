@@ -1,40 +1,61 @@
-var common = require("./action-bar-common");
-var types = require("utils/types");
-var enums = require("ui/enums");
-var application = require("application");
-var style = require("ui/styling/style");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var action_bar_common_1 = require("./action-bar-common");
+var utils_1 = require("../../utils/utils");
+var image_source_1 = require("../../image-source");
+var application = require("../../application");
+__export(require("./action-bar-common"));
 var R_ID_HOME = 0x0102002c;
 var ACTION_ITEM_ID_OFFSET = 1000;
-global.moduleMerge(common, exports);
-var trace;
-function ensureTrace() {
-    if (!trace) {
-        trace = require("trace");
-    }
-}
-var utils;
-function ensureUtils() {
-    if (!utils) {
-        utils = require("utils/utils");
-    }
-}
-var imageSource;
-function ensureImageSource() {
-    if (!imageSource) {
-        imageSource = require("image-source");
-    }
-}
 var actionItemIdGenerator = ACTION_ITEM_ID_OFFSET;
 function generateItemId() {
     actionItemIdGenerator++;
     return actionItemIdGenerator;
+}
+var appResources;
+var MenuItemClickListener;
+function initializeMenuItemClickListener() {
+    if (MenuItemClickListener) {
+        return;
+    }
+    var MenuItemClickListenerImpl = (function (_super) {
+        __extends(MenuItemClickListenerImpl, _super);
+        function MenuItemClickListenerImpl(owner) {
+            _super.call(this);
+            this.owner = owner;
+            return global.__native(this);
+        }
+        MenuItemClickListenerImpl.prototype.onMenuItemClick = function (item) {
+            var itemId = item.getItemId();
+            return this.owner._onAndroidItemSelected(itemId);
+        };
+        MenuItemClickListenerImpl = __decorate([
+            Interfaces([android.support.v7.widget.Toolbar.OnMenuItemClickListener])
+        ], MenuItemClickListenerImpl);
+        return MenuItemClickListenerImpl;
+    }(java.lang.Object));
+    MenuItemClickListener = MenuItemClickListenerImpl;
+    appResources = application.android.context.getResources();
 }
 var ActionItem = (function (_super) {
     __extends(ActionItem, _super);
     function ActionItem() {
         _super.call(this);
         this._androidPosition = {
-            position: enums.AndroidActionItemPosition.actionBar,
+            position: "actionBar",
             systemIcon: undefined
         };
         this._itemId = generateItemId();
@@ -53,11 +74,11 @@ var ActionItem = (function (_super) {
         return this._itemId;
     };
     return ActionItem;
-}(common.ActionItem));
+}(action_bar_common_1.ActionItemBase));
 exports.ActionItem = ActionItem;
 var AndroidActionBarSettings = (function () {
     function AndroidActionBarSettings(actionBar) {
-        this._iconVisibility = enums.AndroidActionBarIconVisibility.auto;
+        this._iconVisibility = "auto";
         this._actionBar = actionBar;
     }
     Object.defineProperty(AndroidActionBarSettings.prototype, "icon", {
@@ -101,7 +122,6 @@ var ActionBar = (function (_super) {
     __extends(ActionBar, _super);
     function ActionBar() {
         _super.call(this);
-        this._appResources = application.android.context.getResources();
         this._android = new AndroidActionBarSettings(this);
     }
     Object.defineProperty(ActionBar.prototype, "android", {
@@ -121,43 +141,55 @@ var ActionBar = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    ActionBar.prototype._createUI = function () {
-        this._toolbar = new android.support.v7.widget.Toolbar(this._context);
-        var ownerRef = new WeakRef(this);
-        this._toolbar.setOnMenuItemClickListener(new android.support.v7.widget.Toolbar.OnMenuItemClickListener({
-            onMenuItemClick: function (item) {
-                var ownerValue = ownerRef.get();
-                if (!ownerValue) {
-                    return false;
-                }
-                var itemId = item.getItemId();
-                return ownerValue._onAndroidItemSelected(itemId);
-            }
-        }));
+    ActionBar.prototype._addChildFromBuilder = function (name, value) {
+        if (value instanceof NavigationButton) {
+            this.navigationButton = value;
+        }
+        else if (value instanceof ActionItem) {
+            this.actionItems.addItem(value);
+        }
+        else if (value instanceof action_bar_common_1.View) {
+            this.titleView = value;
+        }
+    };
+    ActionBar.prototype._createNativeView = function () {
+        initializeMenuItemClickListener();
+        var toolbar = this._toolbar = new android.support.v7.widget.Toolbar(this._context);
+        this._menuItemClickListener = this._menuItemClickListener || new MenuItemClickListener(this);
+        this._toolbar.setOnMenuItemClickListener(this._menuItemClickListener);
+        return toolbar;
     };
     ActionBar.prototype.onLoaded = function () {
         _super.prototype.onLoaded.call(this);
         this.update();
     };
     ActionBar.prototype.update = function () {
-        if (!this._toolbar) {
+        if (!this.nativeView) {
             return;
         }
-        if (!this.page.frame || !this.page.frame._getNavBarVisible(this.page)) {
-            this._toolbar.setVisibility(android.view.View.GONE);
+        var page = this.page;
+        if (!page.frame || !page.frame._getNavBarVisible(page)) {
+            this.nativeView.setVisibility(android.view.View.GONE);
+            // If action bar is hidden - no need to fill it with items.
             return;
         }
-        this._toolbar.setVisibility(android.view.View.VISIBLE);
+        this.nativeView.setVisibility(android.view.View.VISIBLE);
+        // Add menu items
         this._addActionItems();
+        // Set title
         this._updateTitleAndTitleView();
+        // Set home icon
         this._updateIcon();
+        // Set navigation button
         this._updateNavigationButton();
     };
     ActionBar.prototype._onAndroidItemSelected = function (itemId) {
+        // Handle home button
         if (this.navigationButton && itemId === R_ID_HOME) {
             this.navigationButton._raiseTap();
             return true;
         }
+        // Find item with the right ID;
         var menuItem = undefined;
         var items = this.actionItems.getItems();
         for (var i = 0; i < items.length; i++) {
@@ -174,19 +206,21 @@ var ActionBar = (function (_super) {
     };
     ActionBar.prototype._updateNavigationButton = function () {
         var navButton = this.navigationButton;
-        if (navButton && common.isVisible(navButton)) {
-            if (navButton.android.systemIcon) {
-                var systemResourceId = getSystemResourceId(navButton.android.systemIcon);
+        if (navButton && action_bar_common_1.isVisible(navButton)) {
+            var systemIcon = navButton.android.systemIcon;
+            if (systemIcon !== undefined) {
+                // Try to look in the system resources.
+                var systemResourceId = getSystemResourceId(systemIcon);
                 if (systemResourceId) {
-                    this._toolbar.setNavigationIcon(systemResourceId);
+                    this.nativeView.setNavigationIcon(systemResourceId);
                 }
             }
             else if (navButton.icon) {
-                var drawableOrId = getDrawableOrResourceId(navButton.icon, this._appResources);
-                this._toolbar.setNavigationIcon(drawableOrId);
+                var drawableOrId = getDrawableOrResourceId(navButton.icon, appResources);
+                this.nativeView.setNavigationIcon(drawableOrId);
             }
             var navBtn_1 = new WeakRef(navButton);
-            this._toolbar.setNavigationOnClickListener(new android.view.View.OnClickListener({
+            this.nativeView.setNavigationOnClickListener(new android.view.View.OnClickListener({
                 onClick: function (v) {
                     var owner = navBtn_1.get();
                     if (owner) {
@@ -196,64 +230,67 @@ var ActionBar = (function (_super) {
             }));
         }
         else {
-            this._toolbar.setNavigationIcon(null);
+            this.nativeView.setNavigationIcon(null);
         }
     };
     ActionBar.prototype._updateIcon = function () {
         var visibility = getIconVisibility(this.android.iconVisibility);
         if (visibility) {
             var icon = this.android.icon;
-            if (types.isDefined(icon)) {
-                var drawableOrId = getDrawableOrResourceId(icon, this._appResources);
+            if (icon !== undefined) {
+                var drawableOrId = getDrawableOrResourceId(icon, appResources);
                 if (drawableOrId) {
-                    this._toolbar.setLogo(drawableOrId);
+                    this.nativeView.setLogo(drawableOrId);
                 }
             }
             else {
                 var defaultIcon = application.android.nativeApp.getApplicationInfo().icon;
-                this._toolbar.setLogo(defaultIcon);
+                this.nativeView.setLogo(defaultIcon);
             }
         }
         else {
-            this._toolbar.setLogo(null);
+            this.nativeView.setLogo(null);
         }
     };
     ActionBar.prototype._updateTitleAndTitleView = function () {
         if (!this.titleView) {
+            // No title view - show the title
             var title = this.title;
-            if (types.isDefined(title)) {
-                this._toolbar.setTitle(title);
+            if (title !== undefined) {
+                this.nativeView.setTitle(title);
             }
             else {
                 var appContext = application.android.context;
                 var appInfo = appContext.getApplicationInfo();
                 var appLabel = appContext.getPackageManager().getApplicationLabel(appInfo);
                 if (appLabel) {
-                    this._toolbar.setTitle(appLabel);
+                    this.nativeView.setTitle(appLabel);
                 }
             }
         }
     };
     ActionBar.prototype._addActionItems = function () {
-        var menu = this._toolbar.getMenu();
+        var menu = this.nativeView.getMenu();
         var items = this.actionItems.getVisibleItems();
         menu.clear();
         for (var i = 0; i < items.length; i++) {
             var item = items[i];
             var menuItem = menu.add(android.view.Menu.NONE, item._getItemId(), android.view.Menu.NONE, item.text + "");
             if (item.actionView && item.actionView.android) {
-                item.android.position = enums.AndroidActionItemPosition.actionBar;
+                // With custom action view, the menuitem cannot be displayed in a popup menu. 
+                item.android.position = "actionBar";
                 menuItem.setActionView(item.actionView.android);
                 ActionBar._setOnClickListener(item);
             }
             else if (item.android.systemIcon) {
+                // Try to look in the system resources.
                 var systemResourceId = getSystemResourceId(item.android.systemIcon);
                 if (systemResourceId) {
                     menuItem.setIcon(systemResourceId);
                 }
             }
             else if (item.icon) {
-                var drawableOrId = getDrawableOrResourceId(item.icon, this._appResources);
+                var drawableOrId = getDrawableOrResourceId(item.icon, appResources);
                 if (drawableOrId) {
                     menuItem.setIcon(drawableOrId);
                 }
@@ -273,26 +310,28 @@ var ActionBar = (function (_super) {
         }));
     };
     ActionBar.prototype._onTitlePropertyChanged = function () {
-        if (this._toolbar) {
+        if (this.nativeView) {
             this._updateTitleAndTitleView();
         }
     };
     ActionBar.prototype._onIconPropertyChanged = function () {
-        if (this._toolbar) {
+        if (this.nativeView) {
             this._updateIcon();
         }
     };
-    ActionBar.prototype._clearAndroidReference = function () {
-        this._toolbar = undefined;
+    ActionBar.prototype._disposeNativeView = function () {
+        // don't clear _android field!
+        this.nativeView = undefined;
     };
     ActionBar.prototype._addViewToNativeVisualTree = function (child, atIndex) {
+        if (atIndex === void 0) { atIndex = Number.MAX_VALUE; }
         _super.prototype._addViewToNativeVisualTree.call(this, child);
-        if (this._toolbar && child._nativeView) {
-            if (types.isNullOrUndefined(atIndex) || atIndex >= this._nativeView.getChildCount()) {
-                this._toolbar.addView(child._nativeView);
+        if (this.nativeView && child._nativeView) {
+            if (atIndex >= this._nativeView.getChildCount()) {
+                this.nativeView.addView(child._nativeView);
             }
             else {
-                this._toolbar.addView(child._nativeView, atIndex);
+                this.nativeView.addView(child._nativeView, atIndex);
             }
             return true;
         }
@@ -300,30 +339,46 @@ var ActionBar = (function (_super) {
     };
     ActionBar.prototype._removeViewFromNativeVisualTree = function (child) {
         _super.prototype._removeViewFromNativeVisualTree.call(this, child);
-        if (this._toolbar && child._nativeView) {
-            this._toolbar.removeView(child._nativeView);
-            ensureTrace();
-            trace.notifyEvent(child, "childInLayoutRemovedFromNativeVisualTree");
+        if (this.nativeView && child._nativeView) {
+            this.nativeView.removeView(child._nativeView);
         }
     };
+    Object.defineProperty(ActionBar.prototype, action_bar_common_1.colorProperty.native, {
+        get: function () {
+            if (!defaultTitleTextColor) {
+                var textView = new android.widget.TextView(this._context);
+                defaultTitleTextColor = textView.getTextColors().getDefaultColor();
+            }
+            return defaultTitleTextColor;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ActionBar.prototype, action_bar_common_1.colorProperty.native, {
+        set: function (value) {
+            var color = value instanceof action_bar_common_1.Color ? value.android : value;
+            this.nativeView.setTitleTextColor(color);
+        },
+        enumerable: true,
+        configurable: true
+    });
     return ActionBar;
-}(common.ActionBar));
+}(action_bar_common_1.ActionBarBase));
 exports.ActionBar = ActionBar;
+var defaultTitleTextColor;
 function getDrawableOrResourceId(icon, resources) {
-    if (!types.isString(icon)) {
+    if (typeof icon !== "string") {
         return undefined;
     }
-    ensureUtils();
-    if (icon.indexOf(utils.RESOURCE_PREFIX) === 0) {
-        var resourceId = resources.getIdentifier(icon.substr(utils.RESOURCE_PREFIX.length), 'drawable', application.android.packageName);
+    if (icon.indexOf(utils_1.RESOURCE_PREFIX) === 0) {
+        var resourceId = resources.getIdentifier(icon.substr(utils_1.RESOURCE_PREFIX.length), 'drawable', application.android.packageName);
         if (resourceId > 0) {
             return resourceId;
         }
     }
     else {
-        var drawable;
-        ensureImageSource();
-        var is = imageSource.fromFileOrResource(icon);
+        var drawable = void 0;
+        var is = image_source_1.fromFileOrResource(icon);
         if (is) {
             drawable = new android.graphics.drawable.BitmapDrawable(is.android);
         }
@@ -333,21 +388,21 @@ function getDrawableOrResourceId(icon, resources) {
 }
 function getShowAsAction(menuItem) {
     switch (menuItem.android.position) {
-        case enums.AndroidActionItemPosition.actionBarIfRoom:
+        case "actionBarIfRoom":
             return android.view.MenuItem.SHOW_AS_ACTION_IF_ROOM;
-        case enums.AndroidActionItemPosition.popup:
+        case "popup":
             return android.view.MenuItem.SHOW_AS_ACTION_NEVER;
-        case enums.AndroidActionItemPosition.actionBar:
+        case "actionBar":
         default:
             return android.view.MenuItem.SHOW_AS_ACTION_ALWAYS;
     }
 }
 function getIconVisibility(iconVisibility) {
     switch (iconVisibility) {
-        case enums.AndroidActionBarIconVisibility.always:
+        case "always":
             return true;
-        case enums.AndroidActionBarIconVisibility.auto:
-        case enums.AndroidActionBarIconVisibility.never:
+        case "auto":
+        case "never":
         default:
             return false;
     }
@@ -355,41 +410,3 @@ function getIconVisibility(iconVisibility) {
 function getSystemResourceId(systemIcon) {
     return android.content.res.Resources.getSystem().getIdentifier(systemIcon, "drawable", "android");
 }
-var ActionBarStyler = (function () {
-    function ActionBarStyler() {
-    }
-    ActionBarStyler.setColorProperty = function (v, newValue) {
-        var toolbar = v._nativeView;
-        toolbar.setTitleTextColor(newValue);
-    };
-    ActionBarStyler.resetColorProperty = function (v, nativeValue) {
-        if (types.isNullOrUndefined(nativeValue)) {
-            nativeValue = android.graphics.Color.BLACK;
-        }
-        v._nativeView.setTitleTextColor(nativeValue);
-    };
-    ActionBarStyler.getBackgroundColorProperty = function (view) {
-        var toolbar = view._nativeView;
-        return toolbar.getBackground();
-    };
-    ActionBarStyler.setBackgroundColorProperty = function (v, newValue) {
-        var toolbar = v._nativeView;
-        if (toolbar) {
-            toolbar.setBackgroundColor(newValue);
-        }
-    };
-    ActionBarStyler.resetBackgroundColorProperty = function (v, nativeValue) {
-        var toolbar = v._nativeView;
-        if (toolbar) {
-            toolbar.setBackgroundColor(nativeValue);
-        }
-    };
-    ActionBarStyler.registerHandlers = function () {
-        style.registerHandler(style.colorProperty, new style.StylePropertyChangedHandler(ActionBarStyler.setColorProperty, ActionBarStyler.resetColorProperty), "ActionBar");
-        style.registerHandler(style.backgroundColorProperty, new style.StylePropertyChangedHandler(ActionBarStyler.setBackgroundColorProperty, ActionBarStyler.resetBackgroundColorProperty, ActionBarStyler.getBackgroundColorProperty), "ActionBar");
-    };
-    return ActionBarStyler;
-}());
-exports.ActionBarStyler = ActionBarStyler;
-ActionBarStyler.registerHandlers();
-//# sourceMappingURL=action-bar.js.map

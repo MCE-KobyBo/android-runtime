@@ -1,84 +1,30 @@
-var view = require("ui/core/view");
-var dependencyObservable = require("ui/core/dependency-observable");
-var proxy = require("ui/core/proxy");
-var utils = require("utils/utils");
-var trace = require("trace");
-var fs;
-function ensureFS() {
-    if (!fs) {
-        fs = require("file-system");
-    }
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-var urlProperty = new dependencyObservable.Property("url", "WebView", new proxy.PropertyMetadata(""));
-function onUrlPropertyChanged(data) {
-    var webView = data.object;
-    if (webView._suspendLoading) {
-        return;
-    }
-    webView._loadUrl(data.newValue);
-}
-urlProperty.metadata.onSetNativeValue = onUrlPropertyChanged;
-var srcProperty = new dependencyObservable.Property("src", "WebView", new proxy.PropertyMetadata(""));
-function onSrcPropertyChanged(data) {
-    var webView = data.object;
-    if (webView._suspendLoading) {
-        return;
-    }
-    webView.stopLoading();
-    var src = data.newValue;
-    if (trace.enabled) {
-        trace.write("WebView._loadSrc(" + src + ")", trace.categories.Debug);
-    }
-    if (utils.isFileOrResourcePath(src)) {
-        ensureFS();
-        if (src.indexOf("~/") === 0) {
-            src = fs.path.join(fs.knownFolders.currentApp().path, src.replace("~/", ""));
-        }
-        if (fs.File.exists(src)) {
-            var file = fs.File.fromPath(src);
-            var content = file.readTextSync();
-            webView._loadFileOrResource(src, content);
-        }
-    }
-    else if (src.toLowerCase().indexOf("http://") === 0 || src.toLowerCase().indexOf("https://") === 0) {
-        webView._loadHttp(src);
-    }
-    else {
-        webView._loadData(src);
-    }
-}
-srcProperty.metadata.onSetNativeValue = onSrcPropertyChanged;
-var WebView = (function (_super) {
-    __extends(WebView, _super);
-    function WebView() {
+var view_1 = require("../core/view");
+var utils_1 = require("../../utils/utils");
+var file_system_1 = require("../../file-system");
+exports.File = file_system_1.File;
+exports.knownFolders = file_system_1.knownFolders;
+exports.path = file_system_1.path;
+__export(require("../core/view"));
+exports.srcProperty = new view_1.Property({ name: "src" });
+var WebViewBase = (function (_super) {
+    __extends(WebViewBase, _super);
+    function WebViewBase() {
         _super.apply(this, arguments);
     }
-    Object.defineProperty(WebView.prototype, "url", {
-        get: function () {
-            return this._getValue(WebView.urlProperty);
-        },
-        set: function (value) {
-            this._setValue(WebView.urlProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(WebView.prototype, "src", {
-        get: function () {
-            return this._getValue(WebView.srcProperty);
-        },
-        set: function (value) {
-            this._setValue(WebView.srcProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    WebView.prototype._onLoadFinished = function (url, error) {
+    WebViewBase.prototype._onLoadFinished = function (url, error) {
         this._suspendLoading = true;
-        this.url = url;
         this._suspendLoading = false;
         var args = {
-            eventName: WebView.loadFinishedEvent,
+            eventName: WebViewBase.loadFinishedEvent,
             object: this,
             url: url,
             navigationType: undefined,
@@ -86,9 +32,9 @@ var WebView = (function (_super) {
         };
         this.notify(args);
     };
-    WebView.prototype._onLoadStarted = function (url, navigationType) {
+    WebViewBase.prototype._onLoadStarted = function (url, navigationType) {
         var args = {
-            eventName: WebView.loadStartedEvent,
+            eventName: WebViewBase.loadStartedEvent,
             object: this,
             url: url,
             navigationType: navigationType,
@@ -96,23 +42,56 @@ var WebView = (function (_super) {
         };
         this.notify(args);
     };
-    Object.defineProperty(WebView.prototype, "canGoBack", {
+    Object.defineProperty(WebViewBase.prototype, "canGoBack", {
         get: function () {
             throw new Error("This member is abstract.");
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(WebView.prototype, "canGoForward", {
+    Object.defineProperty(WebViewBase.prototype, "canGoForward", {
         get: function () {
             throw new Error("This member is abstract.");
         },
         enumerable: true,
         configurable: true
     });
-    WebView.loadStartedEvent = "loadStarted";
-    WebView.loadFinishedEvent = "loadFinished";
-    WebView.navigationTypes = [
+    Object.defineProperty(WebViewBase.prototype, exports.srcProperty.native, {
+        get: function () {
+            return "";
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(WebViewBase.prototype, exports.srcProperty.native, {
+        set: function (src) {
+            if (this._suspendLoading) {
+                return;
+            }
+            this.stopLoading();
+            if (utils_1.isFileOrResourcePath(src)) {
+                if (src.indexOf("~/") === 0) {
+                    src = file_system_1.path.join(file_system_1.knownFolders.currentApp().path, src.replace("~/", ""));
+                }
+                if (file_system_1.File.exists(src)) {
+                    var file = file_system_1.File.fromPath(src);
+                    var content = file.readTextSync();
+                    this._loadFileOrResource(src, content);
+                }
+            }
+            else if (src.toLowerCase().indexOf("http://") === 0 || src.toLowerCase().indexOf("https://") === 0) {
+                this._loadHttp(src);
+            }
+            else {
+                this._loadData(src);
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    WebViewBase.loadStartedEvent = "loadStarted";
+    WebViewBase.loadFinishedEvent = "loadFinished";
+    WebViewBase.navigationTypes = [
         "linkClicked",
         "formSubmitted",
         "backForward",
@@ -120,9 +99,7 @@ var WebView = (function (_super) {
         "formResubmitted",
         "other"
     ];
-    WebView.urlProperty = urlProperty;
-    WebView.srcProperty = srcProperty;
-    return WebView;
-}(view.View));
-exports.WebView = WebView;
-//# sourceMappingURL=web-view-common.js.map
+    return WebViewBase;
+}(view_1.View));
+exports.WebViewBase = WebViewBase;
+exports.srcProperty.register(WebViewBase);

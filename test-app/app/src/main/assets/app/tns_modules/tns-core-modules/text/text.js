@@ -1,3 +1,4 @@
+"use strict";
 var encoding;
 (function (encoding) {
     encoding.ISO_8859_1 = "ISO-8859-1";
@@ -7,4 +8,3 @@ var encoding;
     encoding.UTF_16LE = "UTF-16LE";
     encoding.UTF_8 = "UTF-8";
 })(encoding = exports.encoding || (exports.encoding = {}));
-//# sourceMappingURL=text.js.map

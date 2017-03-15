@@ -1,7 +1,7 @@
-var fs = require("file-system");
-var types = require("utils/types");
+var platform_1 = require("platform");
+var file_system_1 = require("file-system");
 var trace = require("trace");
-var platform = require("platform");
+var appModule = require("application");
 var MIN_WH = "minWH";
 var MIN_W = "minW";
 var MIN_H = "minH";
@@ -88,7 +88,7 @@ var FileNameResolver = (function () {
     FileNameResolver.prototype.resolveFileName = function (path, ext) {
         var key = path + ext;
         var result = this._cache[key];
-        if (types.isUndefined(result)) {
+        if (result === undefined) {
             result = this.resolveFileNameImpl(path, ext);
             this._cache[key] = result;
         }
@@ -99,7 +99,7 @@ var FileNameResolver = (function () {
     };
     FileNameResolver.prototype.resolveFileNameImpl = function (path, ext) {
         var result = null;
-        path = fs.path.normalize(path);
+        path = file_system_1.path.normalize(path);
         ext = "." + ext;
         var candidates = this.getFileCandidatesFromFolder(path, ext);
         result = _findFileMatch(path, ext, candidates, this._context);
@@ -107,11 +107,11 @@ var FileNameResolver = (function () {
     };
     FileNameResolver.prototype.getFileCandidatesFromFolder = function (path, ext) {
         var candidates = new Array();
-        var folderPath = path.substring(0, path.lastIndexOf(fs.path.separator) + 1);
-        if (fs.Folder.exists(folderPath)) {
-            var folder = fs.Folder.fromPath(folderPath);
+        var folderPath = path.substring(0, path.lastIndexOf(file_system_1.path.separator) + 1);
+        if (file_system_1.Folder.exists(folderPath)) {
+            var folder = file_system_1.Folder.fromPath(folderPath);
             folder.eachEntity(function (e) {
-                if (e instanceof fs.File) {
+                if (e instanceof file_system_1.File) {
                     var file = e;
                     if (file.path.indexOf(path) === 0 && file.extension === ext) {
                         candidates.push(file.path);
@@ -121,7 +121,7 @@ var FileNameResolver = (function () {
             });
         }
         else {
-            if (trace.enabled) {
+            if (trace.isEnabled()) {
                 trace.write("Could not find folder " + folderPath + " when loading " + path + ext, trace.categories.Navigation);
             }
         }
@@ -175,23 +175,15 @@ var resolverInstance;
 function resolveFileName(path, ext) {
     if (!resolverInstance) {
         resolverInstance = new FileNameResolver({
-            width: platform.screen.mainScreen.widthDIPs,
-            height: platform.screen.mainScreen.heightDIPs,
-            os: platform.device.os,
-            deviceType: platform.device.deviceType
+            width: platform_1.screen.mainScreen.widthDIPs,
+            height: platform_1.screen.mainScreen.heightDIPs,
+            os: platform_1.device.os,
+            deviceType: platform_1.device.deviceType
         });
     }
     return resolverInstance.resolveFileName(path, ext);
 }
 exports.resolveFileName = resolveFileName;
-function clearCache() {
-    if (resolverInstance) {
-        resolverInstance.clearCache();
-    }
-}
-exports.clearCache = clearCache;
-function _invalidateResolverInstance() {
-    resolverInstance = undefined;
-}
-exports._invalidateResolverInstance = _invalidateResolverInstance;
+appModule.on("cssChanged", function (args) { return resolverInstance = undefined; });
+appModule.on("livesync", function (args) { return resolverInstance && resolverInstance.clearCache(); });
 //# sourceMappingURL=file-name-resolver.js.map

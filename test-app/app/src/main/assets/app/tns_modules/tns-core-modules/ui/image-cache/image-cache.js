@@ -1,3 +1,9 @@
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
 var common = require("./image-cache-common");
 var LruBitmapCacheClass;
 function ensureLruBitmapCacheClass() {
@@ -11,7 +17,10 @@ function ensureLruBitmapCacheClass() {
             return global.__native(this);
         }
         LruBitmapCache.prototype.sizeOf = function (key, bitmap) {
+            // The cache size will be measured in kilobytes rather than
+            // number of items.
             var result = Math.round(bitmap.getByteCount() / 1024);
+            //console.log("sizeOf key: " + result);
             return result;
         };
         return LruBitmapCache;
@@ -56,4 +65,3 @@ var Cache = (function (_super) {
     return Cache;
 }(common.Cache));
 exports.Cache = Cache;
-//# sourceMappingURL=image-cache.js.map

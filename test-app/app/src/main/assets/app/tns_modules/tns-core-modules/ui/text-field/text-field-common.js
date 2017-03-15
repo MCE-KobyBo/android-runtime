@@ -1,26 +1,22 @@
-var dependencyObservable = require("ui/core/dependency-observable");
-var proxy = require("ui/core/proxy");
-var textBase = require("ui/text-base");
-var editableTextBase = require("ui/editable-text-base");
-exports.secureProperty = new dependencyObservable.Property("secure", "TextField", new proxy.PropertyMetadata(false));
-global.moduleMerge(textBase, exports);
-var TextField = (function (_super) {
-    __extends(TextField, _super);
-    function TextField() {
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var editable_text_base_1 = require("../editable-text-base");
+__export(require("../editable-text-base"));
+var TextFieldBase = (function (_super) {
+    __extends(TextFieldBase, _super);
+    function TextFieldBase() {
         _super.apply(this, arguments);
     }
-    Object.defineProperty(TextField.prototype, "secure", {
-        get: function () {
-            return this._getValue(exports.secureProperty);
-        },
-        set: function (value) {
-            this._setValue(exports.secureProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    TextField.returnPressEvent = "returnPress";
-    return TextField;
-}(editableTextBase.EditableTextBase));
-exports.TextField = TextField;
-//# sourceMappingURL=text-field-common.js.map
+    TextFieldBase.returnPressEvent = "returnPress";
+    return TextFieldBase;
+}(editable_text_base_1.EditableTextBase));
+exports.TextFieldBase = TextFieldBase;
+exports.secureProperty = new editable_text_base_1.Property({ name: "secure", defaultValue: false, valueConverter: editable_text_base_1.booleanConverter });
+exports.secureProperty.register(TextFieldBase);

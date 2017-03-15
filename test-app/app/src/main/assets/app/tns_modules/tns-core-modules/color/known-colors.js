@@ -1,3 +1,4 @@
+"use strict";
 exports.Transparent = "#00000000";
 exports.AliceBlue = "#F0F8FF";
 exports.AntiqueWhite = "#FAEBD7";
@@ -164,4 +165,3 @@ function getKnownColor(name) {
     return _allColors[name.toLowerCase()];
 }
 exports.getKnownColor = getKnownColor;
-//# sourceMappingURL=known-colors.js.map

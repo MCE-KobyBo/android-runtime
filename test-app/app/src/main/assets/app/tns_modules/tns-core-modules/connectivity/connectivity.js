@@ -1,11 +1,10 @@
-var appModule = require("application");
-var common = require("./connectivity-common");
-var utils = require("utils/utils");
-global.moduleMerge(common, exports);
+"use strict";
+var application_1 = require("../application");
 var wifi = "wifi";
 var mobile = "mobile";
+// Get Connection Type
 function getConnectivityManager() {
-    return utils.ad.getApplicationContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+    return application_1.getNativeApplication().getApplicationContext().getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
 }
 function getActiveNetworkInfo() {
     var connectivityManager = getConnectivityManager();
@@ -17,16 +16,16 @@ function getActiveNetworkInfo() {
 function getConnectionType() {
     var activeNetworkInfo = getActiveNetworkInfo();
     if (!activeNetworkInfo || !activeNetworkInfo.isConnected()) {
-        return common.connectionType.none;
+        return 0 /* none */;
     }
-    var connectionType = activeNetworkInfo.getTypeName().toLowerCase();
-    if (connectionType.indexOf(wifi) !== -1) {
-        return common.connectionType.wifi;
+    var type = activeNetworkInfo.getTypeName().toLowerCase();
+    if (type.indexOf(wifi) !== -1) {
+        return 1 /* wifi */;
     }
-    if (connectionType.indexOf(mobile) !== -1) {
-        return common.connectionType.mobile;
+    if (type.indexOf(mobile) !== -1) {
+        return 2 /* mobile */;
     }
-    return common.connectionType.none;
+    return 0 /* none */;
 }
 exports.getConnectionType = getConnectionType;
 function startMonitoring(connectionTypeChangedCallback) {
@@ -34,11 +33,10 @@ function startMonitoring(connectionTypeChangedCallback) {
         var newConnectionType = getConnectionType();
         connectionTypeChangedCallback(newConnectionType);
     };
-    appModule.android.registerBroadcastReceiver(android.net.ConnectivityManager.CONNECTIVITY_ACTION, onReceiveCallback);
+    application_1.android.registerBroadcastReceiver(android.net.ConnectivityManager.CONNECTIVITY_ACTION, onReceiveCallback);
 }
 exports.startMonitoring = startMonitoring;
 function stopMonitoring() {
-    appModule.android.unregisterBroadcastReceiver(android.net.ConnectivityManager.CONNECTIVITY_ACTION);
+    application_1.android.unregisterBroadcastReceiver(android.net.ConnectivityManager.CONNECTIVITY_ACTION);
 }
 exports.stopMonitoring = stopMonitoring;
-//# sourceMappingURL=connectivity.js.map

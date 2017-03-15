@@ -1,4 +1,16 @@
-var frame_1 = require("ui/frame");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var frame_1 = require("./frame");
 var NativeScriptActivity = (function (_super) {
     __extends(NativeScriptActivity, _super);
     function NativeScriptActivity() {
@@ -6,6 +18,8 @@ var NativeScriptActivity = (function (_super) {
         return global.__native(this);
     }
     NativeScriptActivity.prototype.onCreate = function (savedInstanceState) {
+        // Set isNativeScriptActivity in onCreate.
+        // The JS construcotr might not be called beacuse the activity is created from Andoird.
         this.isNativeScriptActivity = true;
         if (!this._callbacks) {
             frame_1.setActivityCallbacks(this);
@@ -28,7 +42,7 @@ var NativeScriptActivity = (function (_super) {
         this._callbacks.onBackPressed(this, _super.prototype.onBackPressed);
     };
     NativeScriptActivity.prototype.onRequestPermissionsResult = function (requestCode, permissions, grantResults) {
-        this._callbacks.onRequestPermissionsResult(this, requestCode, permissions, grantResults, undefined);
+        this._callbacks.onRequestPermissionsResult(this, requestCode, permissions, grantResults, undefined /*TODO: Enable if needed*/);
     };
     NativeScriptActivity.prototype.onActivityResult = function (requestCode, resultCode, data) {
         this._callbacks.onActivityResult(this, requestCode, resultCode, data, _super.prototype.onActivityResult);
@@ -38,4 +52,3 @@ var NativeScriptActivity = (function (_super) {
     ], NativeScriptActivity);
     return NativeScriptActivity;
 }(android.app.Activity));
-//# sourceMappingURL=activity.js.map

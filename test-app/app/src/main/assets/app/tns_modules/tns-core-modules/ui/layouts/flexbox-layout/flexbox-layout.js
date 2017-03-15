@@ -1,8 +1,63 @@
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
 var flexbox_layout_common_1 = require("./flexbox-layout-common");
-var utils_1 = require("utils/utils");
+__export(require("./flexbox-layout-common"));
+var orderDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get: function () { return flexbox_layout_common_1.orderProperty.defaultValue; },
+    set: function (value) {
+        setLayoutParamsProperty(this, function (lp) { return lp.order = value; });
+    }
+};
+var flexGrowDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get: function () { return flexbox_layout_common_1.flexGrowProperty.defaultValue; },
+    set: function (value) {
+        setLayoutParamsProperty(this, function (lp) { return lp.flexGrow = value; });
+    }
+};
+var flexShrinkDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get: function () { return flexbox_layout_common_1.flexShrinkProperty.defaultValue; },
+    set: function (value) {
+        setLayoutParamsProperty(this, function (lp) { return lp.flexShrink = value; });
+    }
+};
+var flexWrapBeforeDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get: function () { return false; },
+    set: function (value) {
+        setLayoutParamsProperty(this, function (lp) { return lp.wrapBefore = value; });
+    }
+};
+var alignSelfDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get: function () { return flexbox_layout_common_1.AlignSelf.AUTO; },
+    set: function (value) {
+        setLayoutParamsProperty(this, function (lp) { return lp.alignSelf = alignSelfMap[value]; });
+    }
+};
+// register native properties on View type.
+Object.defineProperties(flexbox_layout_common_1.View.prototype, (_a = {},
+    _a[flexbox_layout_common_1.orderProperty.native] = orderDescriptor,
+    _a[flexbox_layout_common_1.flexGrowProperty.native] = flexGrowDescriptor,
+    _a[flexbox_layout_common_1.flexShrinkProperty.native] = flexShrinkDescriptor,
+    _a[flexbox_layout_common_1.flexWrapBeforeProperty.native] = flexWrapBeforeDescriptor,
+    _a[flexbox_layout_common_1.alignSelfProperty.native] = alignSelfDescriptor,
+    _a
+));
 function setLayoutParamsProperty(view, setter) {
     var nativeView = view._nativeView;
     if (nativeView) {
@@ -13,77 +68,52 @@ function setLayoutParamsProperty(view, setter) {
         }
     }
 }
-function _onNativeOrderPropertyChanged(view, newValue) {
-    setLayoutParamsProperty(view, function (lp) { return lp.order = newValue; });
-    if (view.parent && view.parent instanceof FlexboxLayout && view.parent.android) {
-        view.parent.android.invalidateOrdersCache();
-    }
-}
-exports._onNativeOrderPropertyChanged = _onNativeOrderPropertyChanged;
-function _onNativeFlexGrowPropertyChanged(view, newValue) {
-    setLayoutParamsProperty(view, function (lp) { return lp.flexGrow = newValue; });
-}
-exports._onNativeFlexGrowPropertyChanged = _onNativeFlexGrowPropertyChanged;
-function _onNativeFlexShrinkPropertyChanged(view, newValue) {
-    setLayoutParamsProperty(view, function (lp) { return lp.flexShrink = newValue; });
-}
-exports._onNativeFlexShrinkPropertyChanged = _onNativeFlexShrinkPropertyChanged;
-function _onNativeAlignSelfPropertyChanged(view, newValue) {
-    setLayoutParamsProperty(view, function (lp) { return lp.alignSelf = alignSelfMap[newValue]; });
-}
-exports._onNativeAlignSelfPropertyChanged = _onNativeAlignSelfPropertyChanged;
-function _onNativeFlexWrapBeforePropertyChanged(view, newValue) {
-    setLayoutParamsProperty(view, function (lp) { return lp.wrapBefore = newValue; });
-}
-exports._onNativeFlexWrapBeforePropertyChanged = _onNativeFlexWrapBeforePropertyChanged;
-__export(require("./flexbox-layout-common"));
-var FlexboxLayoutWidget = org.nativescript.widgets.FlexboxLayout;
-var flexDirectionMap = (_a = {},
-    _a[flexbox_layout_common_1.FlexDirection.ROW] = FlexboxLayoutWidget.FLEX_DIRECTION_ROW,
-    _a[flexbox_layout_common_1.FlexDirection.ROW_REVERSE] = FlexboxLayoutWidget.FLEX_DIRECTION_ROW_REVERSE,
-    _a[flexbox_layout_common_1.FlexDirection.COLUMN] = FlexboxLayoutWidget.FLEX_DIRECTION_COLUMN,
-    _a[flexbox_layout_common_1.FlexDirection.COLUMN_REVERSE] = FlexboxLayoutWidget.FLEX_DIRECTION_COLUMN_REVERSE,
-    _a
-);
-var flexWrapMap = (_b = {},
-    _b[flexbox_layout_common_1.FlexWrap.NOWRAP] = FlexboxLayoutWidget.FLEX_WRAP_NOWRAP,
-    _b[flexbox_layout_common_1.FlexWrap.WRAP] = FlexboxLayoutWidget.FLEX_WRAP_WRAP,
-    _b[flexbox_layout_common_1.FlexWrap.WRAP_REVERSE] = FlexboxLayoutWidget.FLEX_WRAP_WRAP_REVERSE,
+var flexDirectionMap = (_b = {},
+    _b[flexbox_layout_common_1.FlexDirection.ROW] = 0,
+    _b[flexbox_layout_common_1.FlexDirection.ROW_REVERSE] = 1,
+    _b[flexbox_layout_common_1.FlexDirection.COLUMN] = 2,
+    _b[flexbox_layout_common_1.FlexDirection.COLUMN_REVERSE] = 3,
     _b
 );
-var justifyContentMap = (_c = {},
-    _c[flexbox_layout_common_1.JustifyContent.CENTER] = FlexboxLayoutWidget.JUSTIFY_CONTENT_CENTER,
-    _c[flexbox_layout_common_1.JustifyContent.FLEX_END] = FlexboxLayoutWidget.JUSTIFY_CONTENT_FLEX_END,
-    _c[flexbox_layout_common_1.JustifyContent.FLEX_START] = FlexboxLayoutWidget.JUSTIFY_CONTENT_FLEX_START,
-    _c[flexbox_layout_common_1.JustifyContent.SPACE_AROUND] = FlexboxLayoutWidget.JUSTIFY_CONTENT_SPACE_AROUND,
-    _c[flexbox_layout_common_1.JustifyContent.SPACE_BETWEEN] = FlexboxLayoutWidget.JUSTIFY_CONTENT_SPACE_BETWEEN,
+var flexWrapMap = (_c = {},
+    _c[flexbox_layout_common_1.FlexWrap.NOWRAP] = 0,
+    _c[flexbox_layout_common_1.FlexWrap.WRAP] = 1,
+    _c[flexbox_layout_common_1.FlexWrap.WRAP_REVERSE] = 2,
     _c
 );
-var alignItemsMap = (_d = {},
-    _d[flexbox_layout_common_1.AlignItems.BASELINE] = FlexboxLayoutWidget.ALIGN_ITEMS_BASELINE,
-    _d[flexbox_layout_common_1.AlignItems.CENTER] = FlexboxLayoutWidget.ALIGN_ITEMS_CENTER,
-    _d[flexbox_layout_common_1.AlignItems.FLEX_END] = FlexboxLayoutWidget.ALIGN_ITEMS_FLEX_END,
-    _d[flexbox_layout_common_1.AlignItems.FLEX_START] = FlexboxLayoutWidget.ALIGN_ITEMS_FLEX_START,
-    _d[flexbox_layout_common_1.AlignItems.STRETCH] = FlexboxLayoutWidget.ALIGN_ITEMS_STRETCH,
+var justifyContentMap = (_d = {},
+    _d[flexbox_layout_common_1.JustifyContent.FLEX_START] = 0,
+    _d[flexbox_layout_common_1.JustifyContent.FLEX_END] = 1,
+    _d[flexbox_layout_common_1.JustifyContent.CENTER] = 2,
+    _d[flexbox_layout_common_1.JustifyContent.SPACE_BETWEEN] = 3,
+    _d[flexbox_layout_common_1.JustifyContent.SPACE_AROUND] = 4,
     _d
 );
-var alignContentMap = (_e = {},
-    _e[flexbox_layout_common_1.AlignContent.CENTER] = FlexboxLayoutWidget.ALIGN_CONTENT_CENTER,
-    _e[flexbox_layout_common_1.AlignContent.FLEX_END] = FlexboxLayoutWidget.ALIGN_CONTENT_FLEX_END,
-    _e[flexbox_layout_common_1.AlignContent.FLEX_START] = FlexboxLayoutWidget.ALIGN_CONTENT_FLEX_START,
-    _e[flexbox_layout_common_1.AlignContent.SPACE_AROUND] = FlexboxLayoutWidget.ALIGN_CONTENT_SPACE_AROUND,
-    _e[flexbox_layout_common_1.AlignContent.SPACE_BETWEEN] = FlexboxLayoutWidget.ALIGN_CONTENT_SPACE_BETWEEN,
-    _e[flexbox_layout_common_1.AlignContent.STRETCH] = FlexboxLayoutWidget.ALIGN_CONTENT_STRETCH,
+var alignItemsMap = (_e = {},
+    _e[flexbox_layout_common_1.AlignItems.FLEX_START] = 0,
+    _e[flexbox_layout_common_1.AlignItems.FLEX_END] = 1,
+    _e[flexbox_layout_common_1.AlignItems.CENTER] = 2,
+    _e[flexbox_layout_common_1.AlignItems.BASELINE] = 3,
+    _e[flexbox_layout_common_1.AlignItems.STRETCH] = 4,
     _e
 );
-var alignSelfMap = (_f = {},
-    _f[flexbox_layout_common_1.AlignSelf.AUTO] = FlexboxLayoutWidget.LayoutParams.ALIGN_SELF_AUTO,
-    _f[flexbox_layout_common_1.AlignSelf.FLEX_START] = FlexboxLayoutWidget.LayoutParams.ALIGN_SELF_FLEX_START,
-    _f[flexbox_layout_common_1.AlignSelf.FLEX_END] = FlexboxLayoutWidget.LayoutParams.ALIGN_SELF_FLEX_END,
-    _f[flexbox_layout_common_1.AlignSelf.CENTER] = FlexboxLayoutWidget.LayoutParams.ALIGN_SELF_CENTER,
-    _f[flexbox_layout_common_1.AlignSelf.BASELINE] = FlexboxLayoutWidget.LayoutParams.ALIGN_SELF_BASELINE,
-    _f[flexbox_layout_common_1.AlignSelf.STRETCH] = FlexboxLayoutWidget.LayoutParams.ALIGN_SELF_STRETCH,
+var alignContentMap = (_f = {},
+    _f[flexbox_layout_common_1.AlignContent.FLEX_START] = 0,
+    _f[flexbox_layout_common_1.AlignContent.FLEX_END] = 1,
+    _f[flexbox_layout_common_1.AlignContent.CENTER] = 2,
+    _f[flexbox_layout_common_1.AlignContent.SPACE_BETWEEN] = 3,
+    _f[flexbox_layout_common_1.AlignContent.SPACE_AROUND] = 4,
+    _f[flexbox_layout_common_1.AlignContent.STRETCH] = 5,
     _f
+);
+var alignSelfMap = (_g = {},
+    _g[flexbox_layout_common_1.AlignSelf.AUTO] = -1,
+    _g[flexbox_layout_common_1.AlignSelf.FLEX_START] = 0,
+    _g[flexbox_layout_common_1.AlignSelf.FLEX_END] = 1,
+    _g[flexbox_layout_common_1.AlignSelf.CENTER] = 2,
+    _g[flexbox_layout_common_1.AlignSelf.BASELINE] = 3,
+    _g[flexbox_layout_common_1.AlignSelf.STRETCH] = 4,
+    _g
 );
 var FlexboxLayout = (function (_super) {
     __extends(FlexboxLayout, _super);
@@ -100,40 +130,107 @@ var FlexboxLayout = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    FlexboxLayout.prototype._createUI = function () {
-        this._layout = new org.nativescript.widgets.FlexboxLayout(this._context);
+    FlexboxLayout.prototype._createNativeView = function () {
+        var layout = this._layout = new org.nativescript.widgets.FlexboxLayout(this._context);
+        return layout;
     };
-    FlexboxLayout.prototype._invalidateOrdersCache = function () {
-        this._nativeView.invalidateOrdersCache();
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.flexDirectionProperty.native, {
+        get: function () {
+            return flexbox_layout_common_1.flexDirectionProperty.defaultValue;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.flexDirectionProperty.native, {
+        set: function (flexDirection) {
+            this.android.setFlexDirection(flexDirectionMap[flexDirection]);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.flexWrapProperty.native, {
+        get: function () {
+            return flexbox_layout_common_1.flexWrapProperty.defaultValue;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.flexWrapProperty.native, {
+        set: function (flexWrap) {
+            this.android.setFlexWrap(flexWrapMap[flexWrap]);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.justifyContentProperty.native, {
+        get: function () {
+            return flexbox_layout_common_1.justifyContentProperty.defaultValue;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.justifyContentProperty.native, {
+        set: function (justifyContent) {
+            this.android.setJustifyContent(justifyContentMap[justifyContent]);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.alignItemsProperty.native, {
+        get: function () {
+            return flexbox_layout_common_1.alignItemsProperty.defaultValue;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.alignItemsProperty.native, {
+        set: function (alignItems) {
+            this.android.setAlignItems(alignItemsMap[alignItems]);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.alignContentProperty.native, {
+        get: function () {
+            return flexbox_layout_common_1.alignContentProperty.defaultValue;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FlexboxLayout.prototype, flexbox_layout_common_1.alignContentProperty.native, {
+        set: function (alignContent) {
+            this.android.setAlignContent(alignContentMap[alignContent]);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    FlexboxLayout.prototype._updateNativeLayoutParams = function (child) {
+        _super.prototype._updateNativeLayoutParams.call(this, child);
+        var lp = child.nativeView.getLayoutParams();
+        lp.order = child.order;
+        lp.flexGrow = child.flexGrow;
+        lp.flexShrink = child.flexShrink;
+        lp.wrapBefore = child.flexWrapBefore;
+        lp.alignSelf = alignSelfMap[child.alignSelf];
+        child.nativeView.setLayoutParams(lp);
     };
-    FlexboxLayout.prototype._setNativeFlexDirection = function (flexDirection) {
-        var value = flexDirectionMap[flexDirection];
-        this.android.setFlexDirection(value);
+    FlexboxLayout.prototype._setChildMinWidthNative = function (child) {
+        child._minWidthNative = 0;
+        var lp = child.nativeView.getLayoutParams();
+        if (lp instanceof org.nativescript.widgets.FlexboxLayout.LayoutParams) {
+            lp.minWidth = flexbox_layout_common_1.Length.toDevicePixels(child.minWidth, 0);
+            child.nativeView.setLayoutParams(lp);
+        }
     };
-    FlexboxLayout.prototype._setNativeFlexWrap = function (flexWrap) {
-        this.android.setFlexWrap(flexWrapMap[flexWrap]);
-    };
-    FlexboxLayout.prototype._setNativeJustifyContent = function (justifyContent) {
-        this.android.setJustifyContent(justifyContentMap[justifyContent]);
-    };
-    FlexboxLayout.prototype._setNativeAlignItems = function (alignItems) {
-        this.android.setAlignItems(alignItemsMap[alignItems]);
-    };
-    FlexboxLayout.prototype._setNativeAlignContent = function (alignContent) {
-        this.android.setAlignContent(alignContentMap[alignContent]);
+    FlexboxLayout.prototype._setChildMinHeightNative = function (child) {
+        child._minHeightNative = 0;
+        var lp = child.nativeView.getLayoutParams();
+        if (lp instanceof org.nativescript.widgets.FlexboxLayout.LayoutParams) {
+            lp.minHeight = flexbox_layout_common_1.Length.toDevicePixels(child.minHeight, 0);
+            child.nativeView.setLayoutParams(lp);
+        }
     };
     return FlexboxLayout;
 }(flexbox_layout_common_1.FlexboxLayoutBase));
 exports.FlexboxLayout = FlexboxLayout;
-function _setAndroidLayoutParams(lp, view) {
-    lp.order = FlexboxLayout.getOrder(view);
-    lp.flexGrow = FlexboxLayout.getFlexGrow(view);
-    lp.flexShrink = FlexboxLayout.getFlexShrink(view);
-    lp.alignSelf = alignSelfMap[FlexboxLayout.getAlignSelf(view)];
-    lp.wrapBefore = FlexboxLayout.getFlexWrapBefore(view);
-    lp.minWidth = utils_1.layout.toDevicePixels(view.minWidth);
-    lp.minHeight = utils_1.layout.toDevicePixels(view.minHeight);
-}
-exports._setAndroidLayoutParams = _setAndroidLayoutParams;
-var _a, _b, _c, _d, _e, _f;
-//# sourceMappingURL=flexbox-layout.js.map
+var _a, _b, _c, _d, _e, _f, _g;

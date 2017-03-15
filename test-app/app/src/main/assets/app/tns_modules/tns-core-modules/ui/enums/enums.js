@@ -1,3 +1,4 @@
+"use strict";
 var KeyboardType;
 (function (KeyboardType) {
     KeyboardType.datetime = "datetime";
@@ -59,7 +60,6 @@ var HorizontalAlignment;
 var VerticalAlignment;
 (function (VerticalAlignment) {
     VerticalAlignment.top = "top";
-    VerticalAlignment.center = "center";
     VerticalAlignment.middle = "middle";
     VerticalAlignment.bottom = "bottom";
     VerticalAlignment.stretch = "stretch";
@@ -151,10 +151,10 @@ var FontWeight;
     FontWeight.thin = "100";
     FontWeight.extraLight = "200";
     FontWeight.light = "300";
-    FontWeight.normal = "normal";
+    FontWeight.normal = "normal"; // 400 
     FontWeight.medium = "500";
     FontWeight.semiBold = "600";
-    FontWeight.bold = "bold";
+    FontWeight.bold = "bold"; // 700 
     FontWeight.extraBold = "800";
     FontWeight.black = "900";
 })(FontWeight = exports.FontWeight || (exports.FontWeight = {}));
@@ -185,4 +185,3 @@ var StatusBarStyle;
     StatusBarStyle.light = "light";
     StatusBarStyle.dark = "dark";
 })(StatusBarStyle = exports.StatusBarStyle || (exports.StatusBarStyle = {}));
-//# sourceMappingURL=enums.js.map

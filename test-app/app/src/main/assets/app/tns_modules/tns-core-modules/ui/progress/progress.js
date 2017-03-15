@@ -1,30 +1,23 @@
-var common = require("./progress-common");
-var style = require("ui/styling/style");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var progress_common_1 = require("./progress-common");
+__export(require("./progress-common"));
 var R_ATTR_PROGRESS_BAR_STYLE_HORIZONTAL = 0x01010078;
-function onValuePropertyChanged(data) {
-    var progress = data.object;
-    if (!progress.android) {
-        return;
-    }
-    progress.android.setProgress(data.newValue);
-}
-function onMaxValuePropertyChanged(data) {
-    var progress = data.object;
-    if (!progress.android) {
-        return;
-    }
-    progress.android.setMax(data.newValue);
-}
-common.Progress.valueProperty.metadata.onSetNativeValue = onValuePropertyChanged;
-common.Progress.maxValueProperty.metadata.onSetNativeValue = onMaxValuePropertyChanged;
-global.moduleMerge(common, exports);
 var Progress = (function (_super) {
     __extends(Progress, _super);
     function Progress() {
         _super.apply(this, arguments);
     }
-    Progress.prototype._createUI = function () {
-        this._android = new android.widget.ProgressBar(this._context, null, R_ATTR_PROGRESS_BAR_STYLE_HORIZONTAL);
+    Progress.prototype._createNativeView = function () {
+        var progressBar = this._android = new android.widget.ProgressBar(this._context, null, R_ATTR_PROGRESS_BAR_STYLE_HORIZONTAL);
+        return progressBar;
     };
     Object.defineProperty(Progress.prototype, "android", {
         get: function () {
@@ -33,39 +26,106 @@ var Progress = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    return Progress;
-}(common.Progress));
-exports.Progress = Progress;
-var ProgressStyler = (function () {
-    function ProgressStyler() {
-    }
-    ProgressStyler.setColorProperty = function (view, newValue) {
-        var bar = view._nativeView;
-        bar.getProgressDrawable().setColorFilter(newValue, android.graphics.PorterDuff.Mode.SRC_IN);
-    };
-    ProgressStyler.resetColorProperty = function (view, nativeValue) {
-        var bar = view._nativeView;
-        bar.getProgressDrawable().clearColorFilter();
-    };
-    ProgressStyler.setBackgroundAndBorderProperty = function (view, newValue) {
-        var bar = view._nativeView;
-        var progressDrawable = bar.getProgressDrawable();
-        if (progressDrawable.getNumberOfLayers && progressDrawable.getNumberOfLayers() > 0) {
-            var backgroundDrawable = progressDrawable.getDrawable(0);
-            if (backgroundDrawable) {
-                backgroundDrawable.setColorFilter(newValue, android.graphics.PorterDuff.Mode.SRC_IN);
+    Object.defineProperty(Progress.prototype, "nativeView", {
+        get: function () {
+            return this._android;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.valueProperty.native, {
+        get: function () {
+            return 0;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.valueProperty.native, {
+        set: function (value) {
+            this._android.setProgress(value);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.maxValueProperty.native, {
+        get: function () {
+            return 100;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.maxValueProperty.native, {
+        set: function (value) {
+            this._android.setMax(value);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.colorProperty.native, {
+        get: function () {
+            return null;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.colorProperty.native, {
+        set: function (value) {
+            var progressDrawable = this._android.getProgressDrawable();
+            if (!progressDrawable) {
+                return;
             }
-        }
-    };
-    ProgressStyler.resetBackgroundAndBorderProperty = function (view, nativeValue) {
-    };
-    ProgressStyler.registerHandlers = function () {
-        style.registerHandler(style.colorProperty, new style.StylePropertyChangedHandler(ProgressStyler.setColorProperty, ProgressStyler.resetColorProperty), "Progress");
-        style.registerHandler(style.backgroundColorProperty, new style.StylePropertyChangedHandler(ProgressStyler.setBackgroundAndBorderProperty, ProgressStyler.resetBackgroundAndBorderProperty), "Progress");
-        style.registerHandler(style.backgroundInternalProperty, style.ignorePropertyHandler, "Progress");
-    };
-    return ProgressStyler;
-}());
-exports.ProgressStyler = ProgressStyler;
-ProgressStyler.registerHandlers();
-//# sourceMappingURL=progress.js.map
+            if (value instanceof progress_common_1.Color) {
+                progressDrawable.setColorFilter(value.android, android.graphics.PorterDuff.Mode.SRC_IN);
+            }
+            else {
+                progressDrawable.clearColorFilter();
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.backgroundColorProperty.native, {
+        get: function () {
+            return null;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.backgroundColorProperty.native, {
+        set: function (value) {
+            var progressDrawable = this._android.getProgressDrawable();
+            if (!progressDrawable) {
+                return;
+            }
+            if (progressDrawable instanceof android.graphics.drawable.LayerDrawable && progressDrawable.getNumberOfLayers() > 0) {
+                var backgroundDrawable = progressDrawable.getDrawable(0);
+                if (backgroundDrawable) {
+                    if (value instanceof progress_common_1.Color) {
+                        backgroundDrawable.setColorFilter(value.android, android.graphics.PorterDuff.Mode.SRC_IN);
+                    }
+                    else {
+                        backgroundDrawable.clearColorFilter();
+                    }
+                }
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.backgroundInternalProperty.native, {
+        get: function () {
+            return null;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Progress.prototype, progress_common_1.backgroundInternalProperty.native, {
+        set: function (value) {
+            //
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return Progress;
+}(progress_common_1.ProgressBase));
+exports.Progress = Progress;

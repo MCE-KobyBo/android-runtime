@@ -1,13 +1,7 @@
-var colorModule = require("color");
-var enums = require("ui/enums");
-var cssValue = require("css-value");
-var utils = require("utils/utils");
-var types;
-function ensureTypes() {
-    if (!types) {
-        types = require("utils/types");
-    }
-}
+"use strict";
+// Types.
+var color_1 = require("../../color");
+var css_value_1 = require("../../css-value");
 var Background = (function () {
     function Background() {
         this.borderTopWidth = 0;
@@ -139,26 +133,28 @@ var Background = (function () {
             repeatX: true,
             repeatY: true,
             posX: 0,
-            posY: 0,
+            posY: 0
         };
+        // repeat
         if (this.repeat) {
             switch (this.repeat.toLowerCase()) {
-                case enums.BackgroundRepeat.noRepeat:
+                case "no-repeat":
                     res.repeatX = false;
                     res.repeatY = false;
                     break;
-                case enums.BackgroundRepeat.repeatX:
+                case "repeat-x":
                     res.repeatY = false;
                     break;
-                case enums.BackgroundRepeat.repeatY:
+                case "repeat-y":
                     res.repeatX = false;
                     break;
             }
         }
         var imageWidth = this.image.width;
         var imageHeight = this.image.height;
+        // size
         if (this.size) {
-            var values = cssValue(this.size);
+            var values = css_value_1.parse(this.size);
             if (values.length === 2) {
                 var vx = values[0];
                 var vy = values[1];
@@ -192,6 +188,7 @@ var Background = (function () {
                 }
             }
         }
+        // position
         if (this.position) {
             var v = Background.parsePosition(this.position);
             if (v) {
@@ -225,7 +222,7 @@ var Background = (function () {
         return res;
     };
     Background.parsePosition = function (pos) {
-        var values = cssValue(pos);
+        var values = css_value_1.parse(pos);
         if (values.length === 2) {
             return {
                 x: values[0],
@@ -238,6 +235,7 @@ var Background = (function () {
                 type: "ident",
                 string: "center"
             };
+            // If you only one keyword is specified, the other value is "center"
             if (val === "left" || val === "right") {
                 return {
                     x: values[0],
@@ -261,29 +259,30 @@ var Background = (function () {
     };
     ;
     Background.prototype.isEmpty = function () {
-        ensureTypes();
-        return types.isNullOrUndefined(this.color)
-            && types.isNullOrUndefined(this.image)
+        return !this.color
+            && !this.image
             && !this.hasBorderWidth()
             && !this.hasBorderRadius()
             && !this.clipPath;
     };
     Background.equals = function (value1, value2) {
+        // both values are falsy
         if (!value1 && !value2) {
             return true;
         }
+        // only one is falsy
         if (!value1 || !value2) {
             return false;
         }
-        return colorModule.Color.equals(value1.color, value2.color)
+        return color_1.Color.equals(value1.color, value2.color)
             && value1.image === value2.image
             && value1.position === value2.position
             && value1.repeat === value2.repeat
             && value1.size === value2.size
-            && colorModule.Color.equals(value1.borderTopColor, value2.borderTopColor)
-            && colorModule.Color.equals(value1.borderRightColor, value2.borderRightColor)
-            && colorModule.Color.equals(value1.borderBottomColor, value2.borderBottomColor)
-            && colorModule.Color.equals(value1.borderLeftColor, value2.borderLeftColor)
+            && color_1.Color.equals(value1.borderTopColor, value2.borderTopColor)
+            && color_1.Color.equals(value1.borderRightColor, value2.borderRightColor)
+            && color_1.Color.equals(value1.borderBottomColor, value2.borderBottomColor)
+            && color_1.Color.equals(value1.borderLeftColor, value2.borderLeftColor)
             && value1.borderTopWidth === value2.borderTopWidth
             && value1.borderRightWidth === value2.borderRightWidth
             && value1.borderBottomWidth === value2.borderBottomWidth
@@ -295,10 +294,7 @@ var Background = (function () {
             && value1.clipPath === value2.clipPath;
     };
     Background.prototype.hasBorderColor = function () {
-        return !types.isNullOrUndefined(this.borderTopColor)
-            || !types.isNullOrUndefined(this.borderRightColor)
-            || !types.isNullOrUndefined(this.borderBottomColor)
-            || !types.isNullOrUndefined(this.borderLeftColor);
+        return !!this.borderTopColor || !!this.borderRightColor || !!this.borderBottomColor || !!this.borderLeftColor;
     };
     Background.prototype.hasBorderWidth = function () {
         return this.borderTopWidth > 0
@@ -313,9 +309,9 @@ var Background = (function () {
             || this.borderBottomLeftRadius > 0;
     };
     Background.prototype.hasUniformBorderColor = function () {
-        return colorModule.Color.equals(this.borderTopColor, this.borderRightColor)
-            && colorModule.Color.equals(this.borderTopColor, this.borderBottomColor)
-            && colorModule.Color.equals(this.borderTopColor, this.borderLeftColor);
+        return color_1.Color.equals(this.borderTopColor, this.borderRightColor)
+            && color_1.Color.equals(this.borderTopColor, this.borderBottomColor)
+            && color_1.Color.equals(this.borderTopColor, this.borderLeftColor);
     };
     Background.prototype.hasUniformBorderWidth = function () {
         return this.borderTopWidth === this.borderRightWidth
@@ -360,19 +356,3 @@ var Background = (function () {
     return Background;
 }());
 exports.Background = Background;
-function cssValueToDevicePixels(source, total) {
-    var result;
-    source = source.trim();
-    if (source.indexOf("px") !== -1) {
-        result = parseFloat(source.replace("px", ""));
-    }
-    else if (source.indexOf("%") !== -1 && total > 0) {
-        result = (parseFloat(source.replace("%", "")) / 100) * utils.layout.toDeviceIndependentPixels(total);
-    }
-    else {
-        result = parseFloat(source);
-    }
-    return utils.layout.toDevicePixels(result);
-}
-exports.cssValueToDevicePixels = cssValueToDevicePixels;
-//# sourceMappingURL=background-common.js.map

@@ -1,4 +1,5 @@
-var fpsNative = require("fps-meter/fps-native");
+"use strict";
+var fpsNative = require("./fps-native");
 var callbacks = {};
 var idCounter = 0;
 var _minFps = 1000;
@@ -7,6 +8,7 @@ var frameStartTime = 0;
 function doFrame(currentTimeMillis) {
     var fps = 0;
     if (frameStartTime > 0) {
+        // take the span in milliseconds        
         var timeSpan = (currentTimeMillis - frameStartTime);
         framesRendered++;
         if (timeSpan > 1000) {
@@ -61,6 +63,7 @@ function stop() {
 exports.stop = stop;
 function addCallback(callback) {
     var id = idCounter;
+    // Wrap all calback in zonedCallback so that they work with the current zone.
     callbacks[id] = zonedCallback(callback);
     idCounter++;
     return id;
@@ -79,4 +82,3 @@ function notify(fps) {
         callback(fps, _minFps);
     }
 }
-//# sourceMappingURL=fps-meter.js.map

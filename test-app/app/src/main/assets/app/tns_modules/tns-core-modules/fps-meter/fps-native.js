@@ -1,3 +1,4 @@
+"use strict";
 var FPSCallback = (function () {
     function FPSCallback(onFrame) {
         var _this = this;
@@ -27,10 +28,11 @@ var FPSCallback = (function () {
         if (!this.running) {
             return;
         }
+        // divide by 1 000 000 since the parameter is in nanoseconds
         this.onFrame(nanos / 1000000);
+        // add the FrameCallback instance again since it is automatically removed from the Choreographer
         android.view.Choreographer.getInstance().postFrameCallback(this.impl);
     };
     return FPSCallback;
 }());
 exports.FPSCallback = FPSCallback;
-//# sourceMappingURL=fps-native.js.map

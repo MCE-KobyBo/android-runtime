@@ -1,4 +1,10 @@
-var platform = require("platform");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var platform = require("../platform");
 var common = require("./image-asset-common");
 global.moduleMerge(common, exports);
 var ImageAsset = (function (_super) {
@@ -45,4 +51,3 @@ var calculateInSampleSize = function (imageWidth, imageHeight, reqWidth, reqHeig
     }
     return sampleSize;
 };
-//# sourceMappingURL=image-asset.js.map

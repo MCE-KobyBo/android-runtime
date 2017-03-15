@@ -1,3 +1,4 @@
+"use strict";
 var specialProperties = new Map();
 function specialPropertyKey(name) {
     return name.toLowerCase();
@@ -17,4 +18,3 @@ function getSpecialPropertySetter(name) {
     return specialProperties.get(propertyKey);
 }
 exports.getSpecialPropertySetter = getSpecialPropertySetter;
-//# sourceMappingURL=special-properties.js.map

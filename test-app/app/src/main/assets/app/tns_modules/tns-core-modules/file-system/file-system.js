@@ -1,4 +1,11 @@
-var file_access_module = require("file-system/file-system-access");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var file_access_module = require("./file-system-access");
+// The FileSystemAccess implementation, used through all the APIs.
 var fileAccess;
 var getFileAccess = function () {
     if (!fileAccess) {
@@ -12,6 +19,8 @@ function ensurePlatform() {
         platform = require("platform");
     }
 }
+// we are defining these as private variables within the IO scope and will use them to access the corresponding properties for each FSEntity instance.
+// this allows us to encapsulate (hide) the explicit property setters and force the users go through the exposed APIs to receive FSEntity instances.
 var nameProperty = "_name";
 var pathProperty = "_path";
 var isKnownProperty = "_isKnown";
@@ -186,6 +195,7 @@ var File = (function (_super) {
     });
     Object.defineProperty(File.prototype, "isLocked", {
         get: function () {
+            // !! is a boolean conversion/cast, handling undefined as well
             return !!this[fileLockedProperty];
         },
         enumerable: true,
@@ -275,6 +285,7 @@ var File = (function (_super) {
                     onError(error);
                 }
             };
+            // TODO: Asyncronous
             getFileAccess().writeText(this.path, content, localError, encoding);
         }
         finally {
@@ -460,7 +471,7 @@ var knownFolders;
         ios.library = function () {
             _checkPlatform("library");
             if (!_library) {
-                var existingFolderInfo = getExistingFolderInfo(5);
+                var existingFolderInfo = getExistingFolderInfo(5 /* LibraryDirectory */);
                 if (existingFolderInfo) {
                     _library = existingFolderInfo.folder;
                     _library[pathProperty] = existingFolderInfo.path;
@@ -473,7 +484,7 @@ var knownFolders;
         ios.developer = function () {
             _checkPlatform("developer");
             if (!_developer) {
-                var existingFolderInfo = getExistingFolderInfo(6);
+                var existingFolderInfo = getExistingFolderInfo(6 /* DeveloperDirectory */);
                 if (existingFolderInfo) {
                     _developer = existingFolderInfo.folder;
                     _developer[pathProperty] = existingFolderInfo.path;
@@ -486,7 +497,7 @@ var knownFolders;
         ios.desktop = function () {
             _checkPlatform("desktop");
             if (!_desktop) {
-                var existingFolderInfo = getExistingFolderInfo(12);
+                var existingFolderInfo = getExistingFolderInfo(12 /* DesktopDirectory */);
                 if (existingFolderInfo) {
                     _desktop = existingFolderInfo.folder;
                     _desktop[pathProperty] = existingFolderInfo.path;
@@ -499,7 +510,7 @@ var knownFolders;
         ios.downloads = function () {
             _checkPlatform("downloads");
             if (!_downloads) {
-                var existingFolderInfo = getExistingFolderInfo(15);
+                var existingFolderInfo = getExistingFolderInfo(15 /* DownloadsDirectory */);
                 if (existingFolderInfo) {
                     _downloads = existingFolderInfo.folder;
                     _downloads[pathProperty] = existingFolderInfo.path;
@@ -512,7 +523,7 @@ var knownFolders;
         ios.movies = function () {
             _checkPlatform("movies");
             if (!_movies) {
-                var existingFolderInfo = getExistingFolderInfo(17);
+                var existingFolderInfo = getExistingFolderInfo(17 /* MoviesDirectory */);
                 if (existingFolderInfo) {
                     _movies = existingFolderInfo.folder;
                     _movies[pathProperty] = existingFolderInfo.path;
@@ -525,7 +536,7 @@ var knownFolders;
         ios.music = function () {
             _checkPlatform("music");
             if (!_music) {
-                var existingFolderInfo = getExistingFolderInfo(18);
+                var existingFolderInfo = getExistingFolderInfo(18 /* MusicDirectory */);
                 if (existingFolderInfo) {
                     _music = existingFolderInfo.folder;
                     _music[pathProperty] = existingFolderInfo.path;
@@ -538,7 +549,7 @@ var knownFolders;
         ios.pictures = function () {
             _checkPlatform("pictures");
             if (!_pictures) {
-                var existingFolderInfo = getExistingFolderInfo(19);
+                var existingFolderInfo = getExistingFolderInfo(19 /* PicturesDirectory */);
                 if (existingFolderInfo) {
                     _pictures = existingFolderInfo.folder;
                     _pictures[pathProperty] = existingFolderInfo.path;
@@ -551,7 +562,7 @@ var knownFolders;
         ios.sharedPublic = function () {
             _checkPlatform("sharedPublic");
             if (!_sharedPublic) {
-                var existingFolderInfo = getExistingFolderInfo(21);
+                var existingFolderInfo = getExistingFolderInfo(21 /* SharedPublicDirectory */);
                 if (existingFolderInfo) {
                     _sharedPublic = existingFolderInfo.folder;
                     _sharedPublic[pathProperty] = existingFolderInfo.path;
@@ -591,4 +602,3 @@ var path;
     path_1.join = join;
     path_1.separator = getFileAccess().getPathSeparator();
 })(path = exports.path || (exports.path = {}));
-//# sourceMappingURL=file-system.js.map

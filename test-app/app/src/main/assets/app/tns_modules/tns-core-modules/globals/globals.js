@@ -1,4 +1,7 @@
+"use strict";
+// Required by TypeScript compiler
 require("./decorators");
+// Required by V8 snapshot generator
 global.__extends = global.__extends || function (d, b) {
     for (var p in b) {
         if (b.hasOwnProperty(p)) {
@@ -8,6 +11,8 @@ global.__extends = global.__extends || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
+// This method iterates all the keys in the source exports object and copies them to the destination exports one.
+// Note: the method will not check for naming collisions and will override any already existing entries in the destination exports.
 global.moduleMerge = function (sourceExports, destExports) {
     for (var key in sourceExports) {
         destExports[key] = sourceExports[key];
@@ -33,9 +38,11 @@ global.loadModule = function (name) {
 };
 global.zonedCallback = function (callback) {
     if (global.zone) {
+        // Zone v0.5.* style callback wrapping
         return global.zone.bind(callback);
     }
     if (global.Zone) {
+        // Zone v0.6.* style callback wrapping
         return global.Zone.current.wrap(callback);
     }
     else {
@@ -50,11 +57,13 @@ var __tnsGlobalMergedModules = new Map();
 function registerOnGlobalContext(name, module) {
     Object.defineProperty(global, name, {
         get: function () {
+            // We do not need to cache require() call since it is already cached in the runtime.
             var m = global.loadModule(module);
             if (!__tnsGlobalMergedModules.has(module)) {
                 __tnsGlobalMergedModules.set(module, true);
                 global.moduleMerge(m, global);
             }
+            // Redefine the property to make sure the above code is executed only once.
             var resolvedValue = m[name];
             Object.defineProperty(this, name, { value: resolvedValue, configurable: true, writable: true });
             return resolvedValue;
@@ -63,6 +72,7 @@ function registerOnGlobalContext(name, module) {
     });
 }
 if (global.__snapshot) {
+    // when we have a snapshot, it is better to pre-populate these on the global context to get them saved within the blob
     var timer = require("timer");
     global.setTimeout = timer.setTimeout;
     global.clearTimeout = timer.clearTimeout;
@@ -93,14 +103,9 @@ else {
     registerOnGlobalContext("FormData", "xhr");
     registerOnGlobalContext("fetch", "fetch");
 }
-var platform = require("platform");
-var consoleModule = require("console");
-var c = new consoleModule.Console();
-if (platform.device.os === platform.platformNames.android) {
-    global.console = c;
-}
-else if (platform.device.os === platform.platformNames.ios) {
-    global.console.dump = function (args) { c.dump(args); };
+if (!global.console) {
+    var consoleModule = require("console");
+    global.console = new consoleModule.Console();
 }
 function Deprecated(target, key, descriptor) {
     if (descriptor) {
@@ -142,4 +147,3 @@ function Experimental(target, key, descriptor) {
 }
 exports.Experimental = Experimental;
 global.Experimental = Experimental;
-//# sourceMappingURL=globals.js.map

@@ -57,6 +57,10 @@ var MyActivity = (function (_super) {
     	button4.setText("Post");
     	layout.addView(button4);
 
+    	var button6 = new android.widget.Button(this);
+    	button6.setText("Get Script");
+    	layout.addView(button6);
+
         var button5 = new android.widget.Button(this);
         button5.setText("POST request from worker");
         layout.addView(button5);
@@ -123,6 +127,14 @@ var MyActivity = (function (_super) {
         button5.onClick(function() {
             worker.postMessage({ type: "From worker" })
         });
+
+        button6.onClick(function() {
+        http.request({ url: "https://www.gstatic.com/external_hosted/modernizr/modernizr.js", method: "GET"}).then(function (r) {
+                    }, function (e) {
+                        //// Argument (e) is Error!
+                        console.log(e);
+                    });
+        })
     };
     MyActivity = __decorate([
         JavaProxy("com.tns.NativeScriptActivity")

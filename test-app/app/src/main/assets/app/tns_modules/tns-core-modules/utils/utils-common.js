@@ -1,29 +1,6 @@
-var types = require("utils/types");
+"use strict";
+var types = require("./types");
 exports.RESOURCE_PREFIX = "res://";
-function copyFrom(source, target) {
-    if (types.isDefined(source) && types.isDefined(target)) {
-        var i;
-        var key;
-        var value;
-        var keys = Object.keys(source);
-        for (i = 0; i < keys.length; i++) {
-            key = keys[i];
-            value = source[key];
-            if (types.isDefined(value)) {
-                target[key] = value;
-            }
-        }
-    }
-}
-exports.copyFrom = copyFrom;
-function parseJSON(source) {
-    var src = source.trim();
-    if (src.lastIndexOf(")") === src.length - 1) {
-        return JSON.parse(src.substring(src.indexOf("(") + 1, src.lastIndexOf(")")));
-    }
-    return JSON.parse(src);
-}
-exports.parseJSON = parseJSON;
 function escapeRegexSymbols(source) {
     var escapeRegex = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
     return source.replace(escapeRegex, "\\$&");
@@ -38,6 +15,7 @@ function convertString(value) {
         result = value;
     }
     else {
+        // Try to convert value to number.
         var valueAsNumber = +value;
         if (!isNaN(valueAsNumber)) {
             result = valueAsNumber;
@@ -59,7 +37,7 @@ var layout;
     layout.UNSPECIFIED = 0 << MODE_SHIFT;
     layout.EXACTLY = 1 << MODE_SHIFT;
     layout.AT_MOST = 2 << MODE_SHIFT;
-    layout.MEASURED_HEIGHT_STATE_SHIFT = 0x00000010;
+    layout.MEASURED_HEIGHT_STATE_SHIFT = 0x00000010; /* 16 */
     layout.MEASURED_STATE_TOO_SMALL = 0x01000000;
     layout.MEASURED_STATE_MASK = 0xff000000;
     layout.MEASURED_SIZE_MASK = 0x00ffffff;
@@ -109,7 +87,7 @@ function isFileOrResourcePath(path) {
     }
     return path.indexOf("~/") === 0 ||
         path.indexOf("/") === 0 ||
-        path.indexOf(exports.RESOURCE_PREFIX) === 0;
+        path.indexOf(exports.RESOURCE_PREFIX) === 0; // resource
 }
 exports.isFileOrResourcePath = isFileOrResourcePath;
 function isDataURI(uri) {
@@ -149,4 +127,3 @@ function merge(left, right, compareFunc) {
     return result;
 }
 exports.merge = merge;
-//# sourceMappingURL=utils-common.js.map

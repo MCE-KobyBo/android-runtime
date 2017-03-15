@@ -1,89 +1,32 @@
-var types = require("utils/types");
-var style = require("../styling/style");
-var styling = require("ui/styling");
-var trace = require("trace");
-var gestures = require("ui/gestures");
-var styleScope = require("../styling/style-scope");
-var enums = require("ui/enums");
-var utils = require("utils/utils");
-var proxy_1 = require("ui/core/proxy");
-var dependency_observable_1 = require("ui/core/dependency-observable");
-var special_properties_1 = require("ui/builder/special-properties");
-var style_1 = require("ui/styling/style");
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var color_1 = require("color");
+exports.Color = color_1.Color;
 var debug_1 = require("utils/debug");
-special_properties_1.registerSpecialProperty("class", function (instance, propertyValue) {
-    instance.className = propertyValue;
-});
-special_properties_1.registerSpecialProperty("text", function (instance, propertyValue) {
-    instance.set("text", propertyValue);
-});
-function getEventOrGestureName(name) {
-    return name.indexOf("on") === 0 ? name.substr(2, name.length - 2) : name;
+var background_1 = require("ui/styling/background");
+exports.Background = background_1.Background;
+var view_base_1 = require("./view-base");
+var gestures_1 = require("ui/gestures");
+exports.GesturesObserver = gestures_1.GesturesObserver;
+exports.GestureTypes = gestures_1.GestureTypes;
+exports.TouchAction = gestures_1.TouchAction;
+var font_1 = require("ui/styling/font");
+exports.Font = font_1.Font;
+var image_source_1 = require("image-source");
+var utils_1 = require("utils/utils");
+exports.layout = utils_1.layout;
+__export(require("./view-base"));
+var animationModule;
+function ensureAnimationModule() {
+    if (!animationModule) {
+        animationModule = require("ui/animation");
+    }
 }
-function isEventOrGesture(name, view) {
-    if (types.isString(name)) {
-        var eventOrGestureName = getEventOrGestureName(name);
-        var evt = eventOrGestureName + "Event";
-        return view.constructor && evt in view.constructor ||
-            gestures.fromString(eventOrGestureName.toLowerCase()) !== undefined;
-    }
-    return false;
-}
-exports.isEventOrGesture = isEventOrGesture;
-function getViewById(view, id) {
-    if (!view) {
-        return undefined;
-    }
-    if (view.id === id) {
-        return view;
-    }
-    var retVal;
-    var descendantsCallback = function (child) {
-        if (child.id === id) {
-            retVal = child;
-            return false;
-        }
-        return true;
-    };
-    eachDescendant(view, descendantsCallback);
-    return retVal;
-}
-exports.getViewById = getViewById;
-function eachDescendant(view, callback) {
-    if (!callback || !view) {
-        return;
-    }
-    var continueIteration;
-    var localCallback = function (child) {
-        continueIteration = callback(child);
-        if (continueIteration) {
-            child._eachChildView(localCallback);
-        }
-        return continueIteration;
-    };
-    view._eachChildView(localCallback);
-}
-exports.eachDescendant = eachDescendant;
-function getAncestor(view, criterion) {
-    var matcher = null;
-    if (typeof criterion === "string") {
-        matcher = function (view) { return view.typeName === criterion; };
-    }
-    else {
-        matcher = function (view) { return view instanceof criterion; };
-    }
-    for (var parent = view.parent; parent != null; parent = parent.parent) {
-        if (matcher(parent)) {
-            return parent;
-        }
-    }
-    return null;
-}
-exports.getAncestor = getAncestor;
 function PseudoClassHandler() {
     var pseudoClasses = [];
     for (var _i = 0; _i < arguments.length; _i++) {
-        pseudoClasses[_i - 0] = arguments[_i];
+        pseudoClasses[_i] = arguments[_i];
     }
     var stateEventNames = pseudoClasses.map(function (s) { return ":" + s; });
     var listeners = Symbol("listeners");
@@ -102,73 +45,36 @@ function PseudoClassHandler() {
     };
 }
 exports.PseudoClassHandler = PseudoClassHandler;
-var viewIdCounter = 0;
-function onCssClassPropertyChanged(data) {
-    var view = data.object;
-    var classes = view.cssClasses;
-    classes.clear();
-    if (types.isString(data.newValue)) {
-        data.newValue.split(" ").forEach(function (c) { return classes.add(c); });
+var ViewCommon = (function (_super) {
+    __extends(ViewCommon, _super);
+    function ViewCommon() {
+        var _this = _super.call(this) || this;
+        _this._gestureObservers = {};
+        _this._goToVisualState("normal");
+        return _this;
     }
-}
-var cssClassProperty = new dependency_observable_1.Property("cssClass", "View", new proxy_1.PropertyMetadata(undefined, dependency_observable_1.PropertyMetadataSettings.AffectsStyle, onCssClassPropertyChanged));
-var classNameProperty = new dependency_observable_1.Property("className", "View", new proxy_1.PropertyMetadata(undefined, dependency_observable_1.PropertyMetadataSettings.AffectsStyle, onCssClassPropertyChanged));
-var idProperty = new dependency_observable_1.Property("id", "View", new proxy_1.PropertyMetadata(undefined, dependency_observable_1.PropertyMetadataSettings.AffectsStyle));
-var automationTextProperty = new dependency_observable_1.Property("automationText", "View", new proxy_1.PropertyMetadata(undefined));
-var originXProperty = new dependency_observable_1.Property("originX", "View", new proxy_1.PropertyMetadata(0.5));
-var originYProperty = new dependency_observable_1.Property("originY", "View", new proxy_1.PropertyMetadata(0.5));
-var isEnabledProperty = new dependency_observable_1.Property("isEnabled", "View", new proxy_1.PropertyMetadata(true));
-var isUserInteractionEnabledProperty = new dependency_observable_1.Property("isUserInteractionEnabled", "View", new proxy_1.PropertyMetadata(true));
-var View = (function (_super) {
-    __extends(View, _super);
-    function View() {
-        _super.call(this, {});
-        this._isVisibleCache = true;
-        this._measuredWidth = Number.NaN;
-        this._measuredHeight = Number.NaN;
-        this._oldWidthMeasureSpec = Number.NaN;
-        this._oldHeightMeasureSpec = Number.NaN;
-        this._oldLeft = 0;
-        this._oldTop = 0;
-        this._oldRight = 0;
-        this._oldBottom = 0;
-        this._isLayoutValid = false;
-        this._isAddedToNativeVisualTree = false;
-        this._gestureObservers = {};
-        this.cssClasses = new Set();
-        this.cssPseudoClasses = new Set();
-        this.pseudoClassAliases = {
-            'highlighted': [
-                'active',
-                'pressed'
-            ]
-        };
-        this._style = new style.Style(this);
-        this._domId = viewIdCounter++;
-        this._goToVisualState("normal");
-    }
-    View.prototype.getGestureObservers = function (type) {
-        return this._gestureObservers[type];
-    };
-    View.prototype.observe = function (type, callback, thisArg) {
+    ViewCommon.prototype.observe = function (type, callback, thisArg) {
         if (!this._gestureObservers[type]) {
             this._gestureObservers[type] = [];
         }
-        this._gestureObservers[type].push(gestures.observe(this, type, callback, thisArg));
+        this._gestureObservers[type].push(gestures_1.observe(this, type, callback, thisArg));
     };
-    View.prototype.addEventListener = function (arg, callback, thisArg) {
-        if (types.isString(arg)) {
-            arg = getEventOrGestureName(arg);
-            var gesture = gestures.fromString(arg);
+    ViewCommon.prototype.getGestureObservers = function (type) {
+        return this._gestureObservers[type];
+    };
+    ViewCommon.prototype.addEventListener = function (arg, callback, thisArg) {
+        if (typeof arg === "string") {
+            arg = view_base_1.getEventOrGestureName(arg);
+            var gesture = view_base_1.gestureFromString(arg);
             if (gesture && !this._isEvent(arg)) {
                 this.observe(gesture, callback, thisArg);
             }
             else {
-                var events = arg.split(",");
+                var events = (arg).split(",");
                 if (events.length > 0) {
                     for (var i = 0; i < events.length; i++) {
                         var evt = events[i].trim();
-                        var gst = gestures.fromString(evt);
+                        var gst = view_base_1.gestureFromString(evt);
                         if (gst && !this._isEvent(arg)) {
                             this.observe(gst, callback, thisArg);
                         }
@@ -182,13 +88,13 @@ var View = (function (_super) {
                 }
             }
         }
-        else if (types.isNumber(arg)) {
+        else if (typeof arg === "number") {
             this.observe(arg, callback, thisArg);
         }
     };
-    View.prototype.removeEventListener = function (arg, callback, thisArg) {
-        if (types.isString(arg)) {
-            var gesture = gestures.fromString(arg);
+    ViewCommon.prototype.removeEventListener = function (arg, callback, thisArg) {
+        if (typeof arg === "string") {
+            var gesture = view_base_1.gestureFromString(arg);
             if (gesture && !this._isEvent(arg)) {
                 this._disconnectGestureObservers(gesture);
             }
@@ -197,7 +103,7 @@ var View = (function (_super) {
                 if (events.length > 0) {
                     for (var i = 0; i < events.length; i++) {
                         var evt = events[i].trim();
-                        var gst = gestures.fromString(evt);
+                        var gst = view_base_1.gestureFromString(evt);
                         if (gst && !this._isEvent(arg)) {
                             this._disconnectGestureObservers(gst);
                         }
@@ -211,14 +117,14 @@ var View = (function (_super) {
                 }
             }
         }
-        else if (types.isNumber(arg)) {
+        else if (typeof arg === "number") {
             this._disconnectGestureObservers(arg);
         }
     };
-    View.prototype._isEvent = function (name) {
+    ViewCommon.prototype._isEvent = function (name) {
         return this.constructor && name + "Event" in this.constructor;
     };
-    View.prototype._disconnectGestureObservers = function (type) {
+    ViewCommon.prototype._disconnectGestureObservers = function (type) {
         var observers = this.getGestureObservers(type);
         if (observers) {
             for (var i = 0; i < observers.length; i++) {
@@ -226,20 +132,7 @@ var View = (function (_super) {
             }
         }
     };
-    View.prototype.getViewById = function (id) {
-        return getViewById(this, id);
-    };
-    Object.defineProperty(View.prototype, "automationText", {
-        get: function () {
-            return this._getValue(View.automationTextProperty);
-        },
-        set: function (value) {
-            this._setValue(View.automationTextProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "borderColor", {
+    Object.defineProperty(ViewCommon.prototype, "borderColor", {
         get: function () {
             return this.style.borderColor;
         },
@@ -249,7 +142,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderTopColor", {
+    Object.defineProperty(ViewCommon.prototype, "borderTopColor", {
         get: function () {
             return this.style.borderTopColor;
         },
@@ -259,7 +152,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderRightColor", {
+    Object.defineProperty(ViewCommon.prototype, "borderRightColor", {
         get: function () {
             return this.style.borderRightColor;
         },
@@ -269,7 +162,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderBottomColor", {
+    Object.defineProperty(ViewCommon.prototype, "borderBottomColor", {
         get: function () {
             return this.style.borderBottomColor;
         },
@@ -279,7 +172,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderLeftColor", {
+    Object.defineProperty(ViewCommon.prototype, "borderLeftColor", {
         get: function () {
             return this.style.borderLeftColor;
         },
@@ -289,7 +182,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderWidth", {
+    Object.defineProperty(ViewCommon.prototype, "borderWidth", {
         get: function () {
             return this.style.borderWidth;
         },
@@ -299,7 +192,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderTopWidth", {
+    Object.defineProperty(ViewCommon.prototype, "borderTopWidth", {
         get: function () {
             return this.style.borderTopWidth;
         },
@@ -309,7 +202,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderRightWidth", {
+    Object.defineProperty(ViewCommon.prototype, "borderRightWidth", {
         get: function () {
             return this.style.borderRightWidth;
         },
@@ -319,7 +212,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderBottomWidth", {
+    Object.defineProperty(ViewCommon.prototype, "borderBottomWidth", {
         get: function () {
             return this.style.borderBottomWidth;
         },
@@ -329,7 +222,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderLeftWidth", {
+    Object.defineProperty(ViewCommon.prototype, "borderLeftWidth", {
         get: function () {
             return this.style.borderLeftWidth;
         },
@@ -339,7 +232,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderRadius", {
+    Object.defineProperty(ViewCommon.prototype, "borderRadius", {
         get: function () {
             return this.style.borderRadius;
         },
@@ -349,7 +242,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderTopLeftRadius", {
+    Object.defineProperty(ViewCommon.prototype, "borderTopLeftRadius", {
         get: function () {
             return this.style.borderTopLeftRadius;
         },
@@ -359,7 +252,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderTopRightRadius", {
+    Object.defineProperty(ViewCommon.prototype, "borderTopRightRadius", {
         get: function () {
             return this.style.borderTopRightRadius;
         },
@@ -369,7 +262,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderBottomRightRadius", {
+    Object.defineProperty(ViewCommon.prototype, "borderBottomRightRadius", {
         get: function () {
             return this.style.borderBottomRightRadius;
         },
@@ -379,7 +272,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "borderBottomLeftRadius", {
+    Object.defineProperty(ViewCommon.prototype, "borderBottomLeftRadius", {
         get: function () {
             return this.style.borderBottomLeftRadius;
         },
@@ -389,7 +282,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "color", {
+    Object.defineProperty(ViewCommon.prototype, "color", {
         get: function () {
             return this.style.color;
         },
@@ -399,7 +292,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "backgroundColor", {
+    Object.defineProperty(ViewCommon.prototype, "backgroundColor", {
         get: function () {
             return this.style.backgroundColor;
         },
@@ -409,7 +302,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "backgroundImage", {
+    Object.defineProperty(ViewCommon.prototype, "backgroundImage", {
         get: function () {
             return this.style.backgroundImage;
         },
@@ -419,7 +312,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "minWidth", {
+    Object.defineProperty(ViewCommon.prototype, "minWidth", {
         get: function () {
             return this.style.minWidth;
         },
@@ -429,7 +322,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "minHeight", {
+    Object.defineProperty(ViewCommon.prototype, "minHeight", {
         get: function () {
             return this.style.minHeight;
         },
@@ -439,7 +332,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "width", {
+    Object.defineProperty(ViewCommon.prototype, "width", {
         get: function () {
             return this.style.width;
         },
@@ -449,7 +342,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "height", {
+    Object.defineProperty(ViewCommon.prototype, "height", {
         get: function () {
             return this.style.height;
         },
@@ -459,7 +352,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "margin", {
+    Object.defineProperty(ViewCommon.prototype, "margin", {
         get: function () {
             return this.style.margin;
         },
@@ -469,7 +362,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "marginLeft", {
+    Object.defineProperty(ViewCommon.prototype, "marginLeft", {
         get: function () {
             return this.style.marginLeft;
         },
@@ -479,7 +372,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "marginTop", {
+    Object.defineProperty(ViewCommon.prototype, "marginTop", {
         get: function () {
             return this.style.marginTop;
         },
@@ -489,7 +382,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "marginRight", {
+    Object.defineProperty(ViewCommon.prototype, "marginRight", {
         get: function () {
             return this.style.marginRight;
         },
@@ -499,7 +392,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "marginBottom", {
+    Object.defineProperty(ViewCommon.prototype, "marginBottom", {
         get: function () {
             return this.style.marginBottom;
         },
@@ -509,7 +402,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "horizontalAlignment", {
+    Object.defineProperty(ViewCommon.prototype, "horizontalAlignment", {
         get: function () {
             return this.style.horizontalAlignment;
         },
@@ -519,7 +412,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "verticalAlignment", {
+    Object.defineProperty(ViewCommon.prototype, "verticalAlignment", {
         get: function () {
             return this.style.verticalAlignment;
         },
@@ -529,7 +422,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "visibility", {
+    Object.defineProperty(ViewCommon.prototype, "visibility", {
         get: function () {
             return this.style.visibility;
         },
@@ -539,7 +432,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "opacity", {
+    Object.defineProperty(ViewCommon.prototype, "opacity", {
         get: function () {
             return this.style.opacity;
         },
@@ -549,67 +442,7 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "translateX", {
-        get: function () {
-            return this.style.translateX;
-        },
-        set: function (value) {
-            this.style.translateX = value;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "translateY", {
-        get: function () {
-            return this.style.translateY;
-        },
-        set: function (value) {
-            this.style.translateY = value;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "scaleX", {
-        get: function () {
-            return this.style.scaleX;
-        },
-        set: function (value) {
-            this.style.scaleX = value;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "scaleY", {
-        get: function () {
-            return this.style.scaleY;
-        },
-        set: function (value) {
-            this.style.scaleY = value;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "originX", {
-        get: function () {
-            return this._getValue(View.originXProperty);
-        },
-        set: function (value) {
-            this._setValue(View.originXProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "originY", {
-        get: function () {
-            return this._getValue(View.originYProperty);
-        },
-        set: function (value) {
-            this._setValue(View.originYProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "rotate", {
+    Object.defineProperty(ViewCommon.prototype, "rotate", {
         get: function () {
             return this.style.rotate;
         },
@@ -619,100 +452,54 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "isEnabled", {
+    Object.defineProperty(ViewCommon.prototype, "translateX", {
         get: function () {
-            return this._getValue(View.isEnabledProperty);
+            return this.style.translateX;
         },
         set: function (value) {
-            this._setValue(View.isEnabledProperty, value);
-            if (value === false) {
-                this._goToVisualState('disabled');
-            }
-            else {
-                this._goToVisualState('normal');
-            }
+            this.style.translateX = value;
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "page", {
+    Object.defineProperty(ViewCommon.prototype, "translateY", {
         get: function () {
-            if (this.parent) {
-                return this.parent.page;
-            }
-            return null;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "isUserInteractionEnabled", {
-        get: function () {
-            return this._getValue(View.isUserInteractionEnabledProperty);
+            return this.style.translateY;
         },
         set: function (value) {
-            this._setValue(View.isUserInteractionEnabledProperty, value);
+            this.style.translateY = value;
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "id", {
+    Object.defineProperty(ViewCommon.prototype, "scaleX", {
         get: function () {
-            return this._getValue(View.idProperty);
+            return this.style.scaleX;
         },
         set: function (value) {
-            this._setValue(View.idProperty, value);
+            this.style.scaleX = value;
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "cssClass", {
+    Object.defineProperty(ViewCommon.prototype, "scaleY", {
         get: function () {
-            return this._getValue(View.cssClassProperty);
+            return this.style.scaleY;
         },
         set: function (value) {
-            this._setValue(View.cssClassProperty, value);
+            this.style.scaleY = value;
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "className", {
-        get: function () {
-            return this._getValue(View.cssClassProperty);
-        },
-        set: function (value) {
-            this._setValue(View.cssClassProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "style", {
-        get: function () {
-            return this._style;
-        },
-        set: function (value) {
-            throw new Error("View.style property is read-only.");
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "isLayoutRequired", {
-        get: function () {
-            return true;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "isLayoutValid", {
+    Object.defineProperty(ViewCommon.prototype, "isLayoutValid", {
         get: function () {
             return this._isLayoutValid;
         },
-        set: function (value) {
-            throw new Error("isLayoutValid is read-only property.");
-        },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "cssType", {
+    Object.defineProperty(ViewCommon.prototype, "cssType", {
         get: function () {
             if (!this._cssType) {
                 this._cssType = this.typeName.toLowerCase();
@@ -722,371 +509,186 @@ var View = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "parent", {
+    Object.defineProperty(ViewCommon.prototype, "isLayoutRequired", {
         get: function () {
-            return this._parent;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(View.prototype, "isLoaded", {
-        get: function () {
-            return this._isLoaded;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    View.prototype.onLoaded = function () {
-        this._isLoaded = true;
-        this._loadEachChildView();
-        this._applyStyleFromScope();
-        this._emit("loaded");
-    };
-    View.prototype._loadEachChildView = function () {
-        if (this._childrenCount > 0) {
-            var eachChild = function (child) {
-                child.onLoaded();
-                return true;
-            };
-            this._eachChildView(eachChild);
-        }
-    };
-    View.prototype.onUnloaded = function () {
-        this._setCssState(null);
-        this._unloadEachChildView();
-        this._isLoaded = false;
-        this._emit("unloaded");
-    };
-    View.prototype._unloadEachChildView = function () {
-        if (this._childrenCount > 0) {
-            this._eachChildView(function (child) {
-                if (child.isLoaded) {
-                    child.onUnloaded();
-                }
-                return true;
-            });
-        }
-    };
-    View.prototype._onPropertyChanged = function (property, oldValue, newValue) {
-        var _this = this;
-        _super.prototype._onPropertyChanged.call(this, property, oldValue, newValue);
-        if (this._childrenCount > 0) {
-            var shouldUpdateInheritableProps = (property.inheritable && !(property instanceof styling.Property));
-            if (shouldUpdateInheritableProps) {
-                this._updatingInheritedProperties = true;
-                this._eachChildView(function (child) {
-                    child._setValue(property, _this._getValue(property), dependency_observable_1.ValueSource.Inherited);
-                    return true;
-                });
-                this._updatingInheritedProperties = false;
-            }
-        }
-        this._checkMetadataOnPropertyChanged(property.metadata);
-    };
-    View.prototype._isInheritedChange = function () {
-        if (this._updatingInheritedProperties) {
             return true;
-        }
-        var parentView;
-        parentView = (this.parent);
-        while (parentView) {
-            if (parentView._updatingInheritedProperties) {
-                return true;
-            }
-            parentView = (parentView.parent);
-        }
-        return false;
-    };
-    View.prototype._checkMetadataOnPropertyChanged = function (metadata) {
-        if (metadata.affectsLayout) {
-            this.requestLayout();
-        }
-        if (metadata.affectsStyle) {
-            this.style._resetCssValues();
-            this._applyStyleFromScope();
-            this._eachChildView(function (v) {
-                v._checkMetadataOnPropertyChanged(metadata);
-                return true;
-            });
-        }
-    };
-    View.prototype.measure = function (widthMeasureSpec, heightMeasureSpec) {
+        },
+        enumerable: true,
+        configurable: true
+    });
+    ViewCommon.prototype.measure = function (widthMeasureSpec, heightMeasureSpec) {
         this._setCurrentMeasureSpecs(widthMeasureSpec, heightMeasureSpec);
     };
-    View.prototype.layout = function (left, top, right, bottom) {
+    ViewCommon.prototype.layout = function (left, top, right, bottom) {
         this._setCurrentLayoutBounds(left, top, right, bottom);
     };
-    View.prototype.getMeasuredWidth = function () {
-        return this._measuredWidth & utils.layout.MEASURED_SIZE_MASK;
+    ViewCommon.prototype.getMeasuredWidth = function () {
+        return this._measuredWidth & utils_1.layout.MEASURED_SIZE_MASK || 0;
     };
-    View.prototype.getMeasuredHeight = function () {
-        return this._measuredHeight & utils.layout.MEASURED_SIZE_MASK;
+    ViewCommon.prototype.getMeasuredHeight = function () {
+        return this._measuredHeight & utils_1.layout.MEASURED_SIZE_MASK || 0;
     };
-    View.prototype.getMeasuredState = function () {
-        return (this._measuredWidth & utils.layout.MEASURED_STATE_MASK)
-            | ((this._measuredHeight >> utils.layout.MEASURED_HEIGHT_STATE_SHIFT)
-                & (utils.layout.MEASURED_STATE_MASK >> utils.layout.MEASURED_HEIGHT_STATE_SHIFT));
+    ViewCommon.prototype.getMeasuredState = function () {
+        return (this._measuredWidth & utils_1.layout.MEASURED_STATE_MASK)
+            | ((this._measuredHeight >> utils_1.layout.MEASURED_HEIGHT_STATE_SHIFT)
+                & (utils_1.layout.MEASURED_STATE_MASK >> utils_1.layout.MEASURED_HEIGHT_STATE_SHIFT));
     };
-    View.prototype.setMeasuredDimension = function (measuredWidth, measuredHeight) {
+    ViewCommon.prototype.setMeasuredDimension = function (measuredWidth, measuredHeight) {
         this._measuredWidth = measuredWidth;
         this._measuredHeight = measuredHeight;
-        if (trace.enabled) {
-            trace.write(this + " :setMeasuredDimension: " + measuredWidth + ", " + measuredHeight, trace.categories.Layout);
+        if (view_base_1.traceEnabled()) {
+            view_base_1.traceWrite(this + " :setMeasuredDimension: " + measuredWidth + ", " + measuredHeight, view_base_1.traceCategories.Layout);
         }
     };
-    View.prototype.requestLayout = function () {
+    ViewCommon.prototype.requestLayout = function () {
         this._isLayoutValid = false;
     };
-    View.prototype.onMeasure = function (widthMeasureSpec, heightMeasureSpec) {
-    };
-    View.prototype.onLayout = function (left, top, right, bottom) {
-    };
-    View.prototype.layoutNativeView = function (left, top, right, bottom) {
-    };
-    View.prototype.getAllAliasedStates = function (name) {
-        var allStates = [];
-        allStates.push(name);
-        if (name in this.pseudoClassAliases) {
-            for (var i = 0; i < this.pseudoClassAliases[name].length; i++) {
-                allStates.push(this.pseudoClassAliases[name][i]);
-            }
-        }
-        return allStates;
-    };
-    View.prototype.addPseudoClass = function (name) {
-        var allStates = this.getAllAliasedStates(name);
-        for (var i = 0; i < allStates.length; i++) {
-            if (!this.cssPseudoClasses.has(allStates[i])) {
-                this.cssPseudoClasses.add(allStates[i]);
-                this.notifyPseudoClassChanged(allStates[i]);
-            }
-        }
-    };
-    View.prototype.deletePseudoClass = function (name) {
-        var allStates = this.getAllAliasedStates(name);
-        for (var i = 0; i < allStates.length; i++) {
-            if (this.cssPseudoClasses.has(allStates[i])) {
-                this.cssPseudoClasses.delete(allStates[i]);
-                this.notifyPseudoClassChanged(allStates[i]);
-            }
-        }
-    };
-    View.resolveSizeAndState = function (size, specSize, specMode, childMeasuredState) {
+    ViewCommon.resolveSizeAndState = function (size, specSize, specMode, childMeasuredState) {
         var result = size;
         switch (specMode) {
-            case utils.layout.UNSPECIFIED:
+            case utils_1.layout.UNSPECIFIED:
                 result = size;
                 break;
-            case utils.layout.AT_MOST:
+            case utils_1.layout.AT_MOST:
                 if (specSize < size) {
-                    result = Math.round(specSize + 0.499) | utils.layout.MEASURED_STATE_TOO_SMALL;
+                    result = Math.round(specSize + 0.499) | utils_1.layout.MEASURED_STATE_TOO_SMALL;
                 }
                 break;
-            case utils.layout.EXACTLY:
+            case utils_1.layout.EXACTLY:
                 result = specSize;
                 break;
         }
-        return Math.round(result + 0.499) | (childMeasuredState & utils.layout.MEASURED_STATE_MASK);
+        return Math.round(result + 0.499) | (childMeasuredState & utils_1.layout.MEASURED_STATE_MASK);
     };
-    View.combineMeasuredStates = function (curState, newState) {
+    ViewCommon.combineMeasuredStates = function (curState, newState) {
         return curState | newState;
     };
-    View.layoutChild = function (parent, child, left, top, right, bottom) {
-        if (!child || !child._isVisible) {
+    ViewCommon.layoutChild = function (parent, child, left, top, right, bottom) {
+        if (!child || child.isCollapsed) {
             return;
         }
-        var density = utils.layout.getDisplayDensity();
-        var lp = child.style._getValue(style_1.nativeLayoutParamsProperty);
+        var childStyle = child.style;
         var childTop;
         var childLeft;
         var childWidth = child.getMeasuredWidth();
         var childHeight = child.getMeasuredHeight();
+        var effectiveMarginTop = child.effectiveMarginTop;
+        var effectiveMarginBottom = child.effectiveMarginBottom;
         var vAlignment;
-        if (lp.height >= 0 && lp.verticalAlignment === enums.VerticalAlignment.stretch) {
-            vAlignment = enums.VerticalAlignment.center;
+        if (child.effectiveHeight >= 0 && childStyle.verticalAlignment === VerticalAlignment.STRETCH) {
+            vAlignment = VerticalAlignment.MIDDLE;
         }
         else {
-            vAlignment = lp.verticalAlignment;
+            vAlignment = childStyle.verticalAlignment;
         }
-        var marginTop = lp.topMargin;
-        var marginBottom = lp.bottomMargin;
-        var marginLeft = lp.leftMargin;
-        var marginRight = lp.rightMargin;
         switch (vAlignment) {
-            case enums.VerticalAlignment.top:
-                childTop = top + marginTop * density;
+            case VerticalAlignment.TOP:
+                childTop = top + effectiveMarginTop;
                 break;
-            case enums.VerticalAlignment.center:
-            case enums.VerticalAlignment.middle:
-                childTop = top + (bottom - top - childHeight + (marginTop - marginBottom) * density) / 2;
+            case VerticalAlignment.MIDDLE:
+                childTop = top + (bottom - top - childHeight + (effectiveMarginTop - effectiveMarginBottom)) / 2;
                 break;
-            case enums.VerticalAlignment.bottom:
-                childTop = bottom - childHeight - (marginBottom * density);
+            case VerticalAlignment.BOTTOM:
+                childTop = bottom - childHeight - effectiveMarginBottom;
                 break;
-            case enums.VerticalAlignment.stretch:
+            case VerticalAlignment.STRETCH:
             default:
-                childTop = top + marginTop * density;
-                childHeight = bottom - top - (marginTop + marginBottom) * density;
+                childTop = top + effectiveMarginTop;
+                childHeight = bottom - top - (effectiveMarginTop + effectiveMarginBottom);
                 break;
         }
+        var effectiveMarginLeft = child.effectiveMarginLeft;
+        var effectiveMarginRight = child.effectiveMarginRight;
         var hAlignment;
-        if (lp.width >= 0 && lp.horizontalAlignment === enums.HorizontalAlignment.stretch) {
-            hAlignment = enums.HorizontalAlignment.center;
+        if (child.effectiveWidth >= 0 && childStyle.horizontalAlignment === HorizontalAlignment.STRETCH) {
+            hAlignment = HorizontalAlignment.CENTER;
         }
         else {
-            hAlignment = lp.horizontalAlignment;
+            hAlignment = childStyle.horizontalAlignment;
         }
         switch (hAlignment) {
-            case enums.HorizontalAlignment.left:
-                childLeft = left + marginLeft * density;
+            case HorizontalAlignment.LEFT:
+                childLeft = left + effectiveMarginLeft;
                 break;
-            case enums.HorizontalAlignment.center:
-                childLeft = left + (right - left - childWidth + (marginLeft - marginRight) * density) / 2;
+            case HorizontalAlignment.CENTER:
+                childLeft = left + (right - left - childWidth + (effectiveMarginLeft - effectiveMarginRight)) / 2;
                 break;
-            case enums.HorizontalAlignment.right:
-                childLeft = right - childWidth - (marginRight * density);
+            case HorizontalAlignment.RIGHT:
+                childLeft = right - childWidth - effectiveMarginRight;
                 break;
-            case enums.HorizontalAlignment.stretch:
+            case HorizontalAlignment.STRETCH:
             default:
-                childLeft = left + marginLeft * density;
-                childWidth = right - left - (marginLeft + marginRight) * density;
+                childLeft = left + effectiveMarginLeft;
+                childWidth = right - left - (effectiveMarginLeft + effectiveMarginRight);
                 break;
         }
         var childRight = Math.round(childLeft + childWidth);
         var childBottom = Math.round(childTop + childHeight);
         childLeft = Math.round(childLeft);
         childTop = Math.round(childTop);
-        if (trace.enabled) {
-            trace.write(child.parent + " :layoutChild: " + child + " " + childLeft + ", " + childTop + ", " + childRight + ", " + childBottom, trace.categories.Layout);
+        if (view_base_1.traceEnabled()) {
+            view_base_1.traceWrite(child.parent + " :layoutChild: " + child + " " + childLeft + ", " + childTop + ", " + childRight + ", " + childBottom, view_base_1.traceCategories.Layout);
         }
         child.layout(childLeft, childTop, childRight, childBottom);
     };
-    View.measureChild = function (parent, child, widthMeasureSpec, heightMeasureSpec) {
+    ViewCommon.measureChild = function (parent, child, widthMeasureSpec, heightMeasureSpec) {
         var measureWidth = 0;
         var measureHeight = 0;
-        if (child && child._isVisible) {
-            var width = utils.layout.getMeasureSpecSize(widthMeasureSpec);
-            var widthMode = utils.layout.getMeasureSpecMode(widthMeasureSpec);
-            var height = utils.layout.getMeasureSpecSize(heightMeasureSpec);
-            var heightMode = utils.layout.getMeasureSpecMode(heightMeasureSpec);
-            var childWidthMeasureSpec = View.getMeasureSpec(child, width, widthMode, true);
-            var childHeightMeasureSpec = View.getMeasureSpec(child, height, heightMode, false);
-            if (trace.enabled) {
-                trace.write(child.parent + " :measureChild: " + child + " " + utils.layout.measureSpecToString(childWidthMeasureSpec) + ", " + utils.layout.measureSpecToString(childHeightMeasureSpec), trace.categories.Layout);
+        if (child && !child.isCollapsed) {
+            var width = utils_1.layout.getMeasureSpecSize(widthMeasureSpec);
+            var widthMode = utils_1.layout.getMeasureSpecMode(widthMeasureSpec);
+            var height = utils_1.layout.getMeasureSpecSize(heightMeasureSpec);
+            var heightMode = utils_1.layout.getMeasureSpecMode(heightMeasureSpec);
+            child._updateEffectiveLayoutValues(parent);
+            var style = child.style;
+            var horizontalMargins = child.effectiveMarginLeft + child.effectiveMarginRight;
+            var verticalMargins = child.effectiveMarginTop + child.effectiveMarginBottom;
+            var childWidthMeasureSpec = ViewCommon.getMeasureSpec(width, widthMode, horizontalMargins, child.effectiveWidth, style.horizontalAlignment === HorizontalAlignment.STRETCH);
+            var childHeightMeasureSpec = ViewCommon.getMeasureSpec(height, heightMode, verticalMargins, child.effectiveHeight, style.verticalAlignment === VerticalAlignment.STRETCH);
+            if (view_base_1.traceEnabled()) {
+                view_base_1.traceWrite(child.parent + " :measureChild: " + child + " " + utils_1.layout.measureSpecToString(childWidthMeasureSpec) + ", " + utils_1.layout.measureSpecToString(childHeightMeasureSpec), view_base_1.traceCategories.Layout);
             }
             child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
-            measureWidth = child.getMeasuredWidth();
-            measureHeight = child.getMeasuredHeight();
-            var density = utils.layout.getDisplayDensity();
-            var lp = child.style._getValue(style.nativeLayoutParamsProperty);
-            measureWidth = Math.round(measureWidth + (lp.leftMargin + lp.rightMargin) * density);
-            measureHeight = Math.round(measureHeight + (lp.topMargin + lp.bottomMargin) * density);
+            measureWidth = Math.round(child.getMeasuredWidth() + horizontalMargins);
+            measureHeight = Math.round(child.getMeasuredHeight() + verticalMargins);
         }
         return { measuredWidth: measureWidth, measuredHeight: measureHeight };
     };
-    View.getMeasureSpec = function (view, parentLength, parentSpecMode, horizontal) {
-        var lp = view.style._getValue(style.nativeLayoutParamsProperty);
-        var density = utils.layout.getDisplayDensity();
-        var margins = horizontal ? lp.leftMargin + lp.rightMargin : lp.topMargin + lp.bottomMargin;
-        margins = Math.round(margins * density);
-        var resultSize = 0;
-        var resultMode = 0;
-        var measureLength = Math.max(0, parentLength - margins);
-        var childLength = Math.round((horizontal ? lp.width : lp.height) * density);
+    ViewCommon.getMeasureSpec = function (parentLength, parentSpecMode, margins, childLength, stretched) {
+        var resultSize;
+        var resultMode;
         if (childLength >= 0) {
-            if (parentSpecMode !== utils.layout.UNSPECIFIED) {
-                resultSize = Math.min(parentLength, childLength);
-            }
-            else {
-                resultSize = childLength;
-            }
-            resultMode = utils.layout.EXACTLY;
+            resultSize = parentSpecMode === utils_1.layout.UNSPECIFIED ? childLength : Math.min(parentLength, childLength);
+            resultMode = utils_1.layout.EXACTLY;
         }
         else {
             switch (parentSpecMode) {
-                case utils.layout.EXACTLY:
-                    resultSize = measureLength;
-                    var stretched = horizontal ? lp.horizontalAlignment === enums.HorizontalAlignment.stretch : lp.verticalAlignment === enums.VerticalAlignment.stretch;
-                    resultMode = stretched ? utils.layout.EXACTLY : utils.layout.AT_MOST;
+                case utils_1.layout.EXACTLY:
+                    resultSize = Math.max(0, parentLength - margins);
+                    resultMode = stretched ? utils_1.layout.EXACTLY : utils_1.layout.AT_MOST;
                     break;
-                case utils.layout.AT_MOST:
-                    resultSize = measureLength;
-                    resultMode = utils.layout.AT_MOST;
+                case utils_1.layout.AT_MOST:
+                    resultSize = Math.max(0, parentLength - margins);
+                    resultMode = utils_1.layout.AT_MOST;
                     break;
-                case utils.layout.UNSPECIFIED:
+                case utils_1.layout.UNSPECIFIED:
                     resultSize = 0;
-                    resultMode = utils.layout.UNSPECIFIED;
+                    resultMode = utils_1.layout.UNSPECIFIED;
                     break;
             }
         }
-        return utils.layout.makeMeasureSpec(resultSize, resultMode);
+        return utils_1.layout.makeMeasureSpec(resultSize, resultMode);
     };
-    View.prototype._setCurrentMeasureSpecs = function (widthMeasureSpec, heightMeasureSpec) {
-        var changed = this._oldWidthMeasureSpec !== widthMeasureSpec || this._oldHeightMeasureSpec !== heightMeasureSpec;
-        this._oldWidthMeasureSpec = widthMeasureSpec;
-        this._oldHeightMeasureSpec = heightMeasureSpec;
+    ViewCommon.prototype._setCurrentMeasureSpecs = function (widthMeasureSpec, heightMeasureSpec) {
+        var changed = this._currentWidthMeasureSpec !== widthMeasureSpec || this._currentHeightMeasureSpec !== heightMeasureSpec;
+        this._currentWidthMeasureSpec = widthMeasureSpec;
+        this._currentHeightMeasureSpec = heightMeasureSpec;
         return changed;
     };
-    View.adjustChildLayoutParams = function (view, widthMeasureSpec, heightMeasureSpec) {
-        if (!view) {
-            return;
-        }
-        var availableWidth = utils.layout.getMeasureSpecSize(widthMeasureSpec);
-        var widthSpec = utils.layout.getMeasureSpecMode(widthMeasureSpec);
-        var availableHeight = utils.layout.getMeasureSpecSize(heightMeasureSpec);
-        var heightSpec = utils.layout.getMeasureSpecMode(heightMeasureSpec);
-        var lp = view.style._getValue(style.nativeLayoutParamsProperty);
-        if (widthSpec !== utils.layout.UNSPECIFIED) {
-            if (lp.widthPercent > 0) {
-                lp.width = Math.round(availableWidth * lp.widthPercent);
-            }
-            if (lp.leftMarginPercent > 0) {
-                lp.leftMargin = Math.round(availableWidth * lp.leftMarginPercent);
-            }
-            if (lp.rightMarginPercent > 0) {
-                lp.rightMargin = Math.round(availableWidth * lp.rightMarginPercent);
-            }
-        }
-        if (heightSpec !== utils.layout.UNSPECIFIED) {
-            if (lp.heightPercent > 0) {
-                lp.height = Math.round(availableHeight * lp.heightPercent);
-            }
-            if (lp.topMarginPercent > 0) {
-                lp.topMargin = Math.round(availableHeight * lp.topMarginPercent);
-            }
-            if (lp.bottomMarginPercent > 0) {
-                lp.bottomMargin = Math.round(availableHeight * lp.bottomMarginPercent);
-            }
-        }
-    };
-    View.restoreChildOriginalParams = function (view) {
-        if (!view) {
-            return;
-        }
-        var lp = view.style._getValue(style.nativeLayoutParamsProperty);
-        if (lp.widthPercent > 0) {
-            lp.width = -1;
-        }
-        if (lp.heightPercent > 0) {
-            lp.height = -1;
-        }
-        if (lp.leftMarginPercent > 0) {
-            lp.leftMargin = 0;
-        }
-        if (lp.topMarginPercent > 0) {
-            lp.topMargin = 0;
-        }
-        if (lp.rightMarginPercent > 0) {
-            lp.rightMargin = 0;
-        }
-        if (lp.bottomMarginPercent > 0) {
-            lp.bottomMargin = 0;
-        }
-    };
-    View.prototype._getCurrentLayoutBounds = function () {
+    ViewCommon.prototype._getCurrentLayoutBounds = function () {
         return { left: this._oldLeft, top: this._oldTop, right: this._oldRight, bottom: this._oldBottom };
     };
-    View.prototype._setCurrentLayoutBounds = function (left, top, right, bottom) {
+    ViewCommon.prototype._setCurrentLayoutBounds = function (left, top, right, bottom) {
         this._isLayoutValid = true;
         var boundsChanged = this._oldLeft !== left || this._oldTop !== top || this._oldRight !== right || this._oldBottom !== bottom;
         var sizeChanged = (this._oldRight - this._oldLeft !== right - left) || (this._oldBottom - this._oldTop !== bottom - top);
@@ -1096,237 +698,59 @@ var View = (function (_super) {
         this._oldBottom = bottom;
         return { boundsChanged: boundsChanged, sizeChanged: sizeChanged };
     };
-    View.prototype._applyStyleFromScope = function () {
-        var rootPage = this.page;
-        if (!rootPage || !rootPage.isLoaded) {
-            return;
-        }
-        var scope = rootPage._getStyleScope();
-        scope.applySelectors(this);
+    ViewCommon.prototype._createNativeView = function () {
     };
-    View.prototype._applyInlineStyle = function (inlineStyle) {
-        if (types.isString(inlineStyle)) {
-            try {
-                this.style._beginUpdate();
-                styleScope.applyInlineSyle(this, inlineStyle);
-            }
-            finally {
-                this.style._endUpdate();
-            }
-        }
+    ViewCommon.prototype.eachChild = function (callback) {
+        this.eachChildView(callback);
     };
-    View.prototype._onAttached = function (context) {
+    ViewCommon.prototype.eachChildView = function (callback) {
     };
-    View.prototype._onDetached = function (force) {
-    };
-    View.prototype._createUI = function () {
-    };
-    View.prototype._onContextChanged = function () {
-    };
-    Object.defineProperty(View.prototype, "_childrenCount", {
-        get: function () {
-            return 0;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    View.prototype._eachChildView = function (callback) {
-    };
-    View.prototype._childIndexToNativeChildIndex = function (index) {
-        return index;
-    };
-    View.prototype._getNativeViewsCount = function () {
+    ViewCommon.prototype._getNativeViewsCount = function () {
         return this._isAddedToNativeVisualTree ? 1 : 0;
     };
-    View.prototype._eachLayoutView = function (callback) {
+    ViewCommon.prototype._eachLayoutView = function (callback) {
         return callback(this);
     };
-    View.prototype._addToSuperview = function (superview, index) {
-        return false;
+    ViewCommon.prototype._updateLayout = function () {
     };
-    View.prototype._removeFromSuperview = function () {
-    };
-    View.prototype._addView = function (view, atIndex) {
-        if (trace.enabled) {
-            trace.write(this + "._addView(" + view + ", " + atIndex + ")", trace.categories.ViewHierarchy);
-        }
-        if (!view) {
-            throw new Error("Expecting a valid View instance.");
-        }
-        if (!(view instanceof View)) {
-            throw new Error(view + " is not a valid View instance.");
-        }
-        if (view._parent) {
-            throw new Error("View already has a parent. View: " + view + " Parent: " + view._parent);
-        }
-        view._parent = this;
-        this._addViewCore(view, atIndex);
-        view._parentChanged(null);
-    };
-    View.prototype._addViewCore = function (view, atIndex) {
-        this._propagateInheritableProperties(view);
-        if (!view._isAddedToNativeVisualTree) {
-            var nativeIndex = this._childIndexToNativeChildIndex(atIndex);
-            view._isAddedToNativeVisualTree = this._addViewToNativeVisualTree(view, nativeIndex);
-        }
-        if (this._isLoaded) {
-            view.onLoaded();
-        }
-    };
-    View.prototype._propagateInheritableProperties = function (view) {
-        view._inheritProperties(this);
-        view.style._inheritStyleProperties(this);
-    };
-    View.prototype._inheritProperties = function (parentView) {
-        var _this = this;
-        parentView._eachSetProperty(function (property) {
-            if (!(property instanceof styling.Property) && property.inheritable) {
-                var baseValue = parentView._getValue(property);
-                _this._setValue(property, baseValue, dependency_observable_1.ValueSource.Inherited);
-            }
-            return true;
-        });
-    };
-    View.prototype._removeView = function (view) {
-        if (trace.enabled) {
-            trace.write(this + "._removeView(" + view + ")", trace.categories.ViewHierarchy);
-        }
-        if (view._parent !== this) {
-            throw new Error("View not added to this instance. View: " + view + " CurrentParent: " + view._parent + " ExpectedParent: " + this);
-        }
-        this._removeViewCore(view);
-        view._parent = undefined;
-        view._parentChanged(this);
-    };
-    View.prototype._removeViewCore = function (view) {
-        this._removeViewFromNativeVisualTree(view);
-        if (view.isLoaded) {
-            view.onUnloaded();
-        }
-        view.unsetInheritedProperties();
-    };
-    View.prototype.unsetInheritedProperties = function () {
-        var _this = this;
-        this._setValue(proxy_1.ProxyObject.bindingContextProperty, undefined, dependency_observable_1.ValueSource.Inherited);
-        this._eachSetProperty(function (property) {
-            if (!(property instanceof styling.Property) && property.inheritable) {
-                _this._resetValue(property, dependency_observable_1.ValueSource.Inherited);
-            }
-            return true;
-        });
-    };
-    View.prototype._parentChanged = function (oldParent) {
-    };
-    View.prototype._addViewToNativeVisualTree = function (view, atIndex) {
-        if (view._isAddedToNativeVisualTree) {
-            throw new Error("Child already added to the native visual tree.");
-        }
-        return true;
-    };
-    View.prototype._removeViewFromNativeVisualTree = function (view) {
-        view._isAddedToNativeVisualTree = false;
-    };
-    View.prototype._syncNativeProperties = function () {
-        _super.prototype._syncNativeProperties.call(this);
-        this.style._syncNativeProperties();
-    };
-    View.prototype._goToVisualState = function (state) {
-        if (trace.enabled) {
-            trace.write(this + " going to state: " + state, trace.categories.Style);
-        }
-        if (state === this._visualState) {
-            return;
-        }
-        this.deletePseudoClass(this._visualState);
-        this._visualState = state;
-        this.addPseudoClass(state);
-    };
-    View.prototype._applyXmlAttribute = function (attribute, value) {
-        if (attribute === "style") {
-            this._applyInlineStyle(value);
-            return true;
-        }
-        return false;
-    };
-    View.prototype.setInlineStyle = function (style) {
-        if (!types.isString(style)) {
-            throw new Error("Parameter should be valid CSS string!");
-        }
-        this._applyInlineStyle(style);
-    };
-    View.prototype._updateLayout = function () {
-    };
-    Object.defineProperty(View.prototype, "_nativeView", {
+    Object.defineProperty(ViewCommon.prototype, "_nativeView", {
         get: function () {
             return undefined;
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(View.prototype, "_isVisible", {
-        get: function () {
-            return this._isVisibleCache;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    View.prototype._shouldApplyStyleHandlers = function () {
-        return !!this._nativeView;
-    };
-    View.prototype.focus = function () {
+    ViewCommon.prototype.focus = function () {
         return undefined;
     };
-    View.prototype.getLocationInWindow = function () {
+    ViewCommon.prototype.getLocationInWindow = function () {
         return undefined;
     };
-    View.prototype.getLocationOnScreen = function () {
+    ViewCommon.prototype.getLocationOnScreen = function () {
         return undefined;
     };
-    View.prototype.getLocationRelativeTo = function (otherView) {
+    ViewCommon.prototype.getLocationRelativeTo = function (otherView) {
         return undefined;
     };
-    View.prototype.getActualSize = function () {
+    ViewCommon.prototype.getActualSize = function () {
         var currentBounds = this._getCurrentLayoutBounds();
         if (!currentBounds) {
             return undefined;
         }
         return {
-            width: utils.layout.toDeviceIndependentPixels(currentBounds.right - currentBounds.left),
-            height: utils.layout.toDeviceIndependentPixels(currentBounds.bottom - currentBounds.top),
+            width: utils_1.layout.toDeviceIndependentPixels(currentBounds.right - currentBounds.left),
+            height: utils_1.layout.toDeviceIndependentPixels(currentBounds.bottom - currentBounds.top),
         };
     };
-    View.prototype.animate = function (animation) {
+    ViewCommon.prototype.animate = function (animation) {
         return this.createAnimation(animation).play();
     };
-    View.prototype.createAnimation = function (animation) {
-        var animationModule = require("ui/animation");
-        var that = this;
-        animation.target = that;
+    ViewCommon.prototype.createAnimation = function (animation) {
+        ensureAnimationModule();
+        animation.target = this;
         return new animationModule.Animation([animation]);
     };
-    View.prototype._registerAnimation = function (animation) {
-        if (this._registeredAnimations === undefined) {
-            this._registeredAnimations = new Array();
-        }
-        this._registeredAnimations.push(animation);
-    };
-    View.prototype._unregisterAnimation = function (animation) {
-        if (this._registeredAnimations) {
-            var index_1 = this._registeredAnimations.indexOf(animation);
-            if (index_1 >= 0) {
-                this._registeredAnimations.splice(index_1, 1);
-            }
-        }
-    };
-    View.prototype._unregisterAllAnimations = function () {
-        if (this._registeredAnimations) {
-            for (var _i = 0, _a = this._registeredAnimations; _i < _a.length; _i++) {
-                var animation = _a[_i];
-                animation.cancel();
-            }
-        }
-    };
-    View.prototype.toString = function () {
+    ViewCommon.prototype.toString = function () {
         var str = this.typeName;
         if (this.id) {
             str += "<" + this.id + ">";
@@ -1340,91 +764,1028 @@ var View = (function (_super) {
         }
         return str;
     };
-    View.prototype._setNativeViewFrame = function (nativeView, frame) {
+    ViewCommon.prototype._setNativeViewFrame = function (nativeView, frame) {
     };
-    View.prototype._onStylePropertyChanged = function (property) {
+    ViewCommon.prototype._getValue = function () {
+        throw new Error("The View._setValue is obsolete. There is a new property system.");
     };
-    View.prototype._canApplyNativeProperty = function () {
-        return !!this._nativeView;
+    ViewCommon.prototype._setValue = function () {
+        throw new Error("The View._setValue is obsolete. There is a new property system.");
     };
-    View.prototype.notifyPseudoClassChanged = function (pseudoClass) {
-        this.notify({ eventName: ":" + pseudoClass, object: this });
+    ViewCommon.prototype._updateEffectiveLayoutValues = function (parent) {
+        var style = this.style;
+        var parentWidthMeasureSpec = parent._currentWidthMeasureSpec;
+        var parentWidthMeasureSize = utils_1.layout.getMeasureSpecSize(parentWidthMeasureSpec);
+        var parentWidthMeasureMode = utils_1.layout.getMeasureSpecMode(parentWidthMeasureSpec);
+        var parentAvailableWidth = parentWidthMeasureMode === utils_1.layout.UNSPECIFIED ? -1 : parentWidthMeasureSize;
+        this.effectiveWidth = PercentLength.toDevicePixels(style.width, -2, parentAvailableWidth);
+        this.effectiveMarginLeft = PercentLength.toDevicePixels(style.marginLeft, 0, parentAvailableWidth);
+        this.effectiveMarginRight = PercentLength.toDevicePixels(style.marginRight, 0, parentAvailableWidth);
+        var parentHeightMeasureSpec = parent._currentHeightMeasureSpec;
+        var parentHeightMeasureSize = utils_1.layout.getMeasureSpecSize(parentHeightMeasureSpec);
+        var parentHeightMeasureMode = utils_1.layout.getMeasureSpecMode(parentHeightMeasureSpec);
+        var parentAvailableHeight = parentHeightMeasureMode === utils_1.layout.UNSPECIFIED ? -1 : parentHeightMeasureSize;
+        this.effectiveHeight = PercentLength.toDevicePixels(style.height, -2, parentAvailableHeight);
+        this.effectiveMarginTop = PercentLength.toDevicePixels(style.marginTop, 0, parentAvailableHeight);
+        this.effectiveMarginBottom = PercentLength.toDevicePixels(style.marginBottom, 0, parentAvailableHeight);
     };
-    View.prototype._setCssState = function (next) {
-        var _this = this;
-        var previous = this._cssState;
-        this._cssState = next;
-        if (!this._invalidateCssHandler) {
-            this._invalidateCssHandler = function () {
-                if (_this._invalidateCssHandlerSuspended) {
-                    return;
+    return ViewCommon;
+}(view_base_1.ViewBase));
+ViewCommon.loadedEvent = "loaded";
+ViewCommon.unloadedEvent = "unloaded";
+exports.ViewCommon = ViewCommon;
+ViewCommon.prototype._oldLeft = 0;
+ViewCommon.prototype._oldTop = 0;
+ViewCommon.prototype._oldRight = 0;
+ViewCommon.prototype._oldBottom = 0;
+ViewCommon.prototype.effectiveMinWidth = 0;
+ViewCommon.prototype.effectiveMinHeight = 0;
+ViewCommon.prototype.effectiveWidth = 0;
+ViewCommon.prototype.effectiveHeight = 0;
+ViewCommon.prototype.effectiveMarginTop = 0;
+ViewCommon.prototype.effectiveMarginRight = 0;
+ViewCommon.prototype.effectiveMarginBottom = 0;
+ViewCommon.prototype.effectiveMarginLeft = 0;
+ViewCommon.prototype.effectivePaddingTop = 0;
+ViewCommon.prototype.effectivePaddingRight = 0;
+ViewCommon.prototype.effectivePaddingBottom = 0;
+ViewCommon.prototype.effectivePaddingLeft = 0;
+ViewCommon.prototype.effectiveBorderTopWidth = 0;
+ViewCommon.prototype.effectiveBorderRightWidth = 0;
+ViewCommon.prototype.effectiveBorderBottomWidth = 0;
+ViewCommon.prototype.effectiveBorderLeftWidth = 0;
+function equalsCommon(a, b) {
+    if (a == "auto") {
+        return b == "auto";
+    }
+    if (typeof a === "number") {
+        if (b == "auto") {
+            return false;
+        }
+        if (typeof b === "number") {
+            return a == b;
+        }
+        return b.unit == "dip" && a == b.value;
+    }
+    if (b == "auto") {
+        return false;
+    }
+    if (typeof b === "number") {
+        return a.unit == "dip" && a.value == b;
+    }
+    return a.value == b.value && a.unit == b.unit;
+}
+function convertToStringCommon(length) {
+    if (length == "auto") {
+        return "auto";
+    }
+    if (typeof length === "number") {
+        return length.toString();
+    }
+    var val = length.value;
+    if (length.unit === "%") {
+        val *= 100;
+    }
+    return val + length.unit;
+}
+function toDevicePixelsCommon(length, auto, parentAvailableWidth) {
+    if (length == "auto") {
+        return auto;
+    }
+    if (typeof length === "number") {
+        return Math.round(utils_1.layout.getDisplayDensity() * length);
+    }
+    switch (length.unit) {
+        case "px":
+            return Math.round(length.value);
+        default:
+        case "dip":
+            return Math.round(utils_1.layout.getDisplayDensity() * length.value);
+        case "%":
+            return Math.round(parentAvailableWidth * length.value);
+    }
+}
+var PercentLength;
+(function (PercentLength) {
+    function parse(value) {
+        if (value == "auto") {
+            return "auto";
+        }
+        if (typeof value === "string") {
+            var type = void 0;
+            var numberValue = 0;
+            var stringValue = value.trim();
+            var percentIndex = stringValue.indexOf("%");
+            if (percentIndex !== -1) {
+                type = "%";
+                if (percentIndex !== (stringValue.length - 1) || percentIndex === 0) {
+                    numberValue = Number.NaN;
                 }
-                _this.applyCssState();
+                else {
+                    numberValue = parseFloat(stringValue.substring(0, stringValue.length - 1).trim()) / 100;
+                }
+            }
+            else {
+                if (stringValue.indexOf("px") !== -1) {
+                    type = "px";
+                    stringValue = stringValue.replace("px", "").trim();
+                }
+                else {
+                    type = "dip";
+                }
+                numberValue = parseFloat(stringValue);
+            }
+            if (isNaN(numberValue) || !isFinite(numberValue)) {
+                throw new Error("Invalid value: " + value);
+            }
+            return {
+                value: numberValue,
+                unit: type
             };
         }
-        try {
-            this._invalidateCssHandlerSuspended = true;
-            if (next) {
-                next.changeMap.forEach(function (changes, view) {
-                    if (changes.attributes) {
-                        changes.attributes.forEach(function (attribute) {
-                            view.addEventListener(attribute + "Change", _this._invalidateCssHandler);
-                        });
-                    }
-                    if (changes.pseudoClasses) {
-                        changes.pseudoClasses.forEach(function (pseudoClass) {
-                            var eventName = ":" + pseudoClass;
-                            view.addEventListener(":" + pseudoClass, _this._invalidateCssHandler);
-                            if (view[eventName]) {
-                                view[eventName](+1);
-                            }
-                        });
-                    }
-                });
-            }
-            if (previous) {
-                previous.changeMap.forEach(function (changes, view) {
-                    if (changes.attributes) {
-                        changes.attributes.forEach(function (attribute) {
-                            view.removeEventListener("onPropertyChanged:" + attribute, _this._invalidateCssHandler);
-                        });
-                    }
-                    if (changes.pseudoClasses) {
-                        changes.pseudoClasses.forEach(function (pseudoClass) {
-                            var eventName = ":" + pseudoClass;
-                            view.removeEventListener(eventName, _this._invalidateCssHandler);
-                            if (view[eventName]) {
-                                view[eventName](-1);
-                            }
-                        });
-                    }
-                });
-            }
+        else {
+            return value;
         }
-        finally {
-            this._invalidateCssHandlerSuspended = false;
+    }
+    PercentLength.parse = parse;
+    PercentLength.equals = equalsCommon;
+    PercentLength.toDevicePixels = toDevicePixelsCommon;
+    PercentLength.convertToString = convertToStringCommon;
+})(PercentLength = exports.PercentLength || (exports.PercentLength = {}));
+var Length;
+(function (Length) {
+    function parse(value) {
+        if (value == "auto") {
+            return "auto";
         }
-        this.applyCssState();
-    };
-    View.prototype.applyCssState = function () {
-        if (!this._cssState) {
+        else if (typeof value === "string") {
+            var type = void 0;
+            var numberValue = 0;
+            var stringValue = value.trim();
+            if (stringValue.indexOf("px") !== -1) {
+                type = "px";
+                stringValue = stringValue.replace("px", "").trim();
+            }
+            else {
+                type = "dip";
+            }
+            numberValue = parseFloat(stringValue);
+            if (isNaN(numberValue) || !isFinite(numberValue)) {
+                throw new Error("Invalid value: " + value);
+            }
+            return {
+                value: numberValue,
+                unit: type
+            };
+        }
+        else {
+            return value;
+        }
+    }
+    Length.parse = parse;
+    Length.equals = equalsCommon;
+    Length.toDevicePixels = toDevicePixelsCommon;
+    Length.convertToString = convertToStringCommon;
+})(Length = exports.Length || (exports.Length = {}));
+function booleanConverter(v) {
+    var lowercase = (v + '').toLowerCase();
+    if (lowercase === "true") {
+        return true;
+    }
+    else if (lowercase === "false") {
+        return false;
+    }
+    throw new Error("Invalid boolean: " + v);
+}
+exports.booleanConverter = booleanConverter;
+exports.automationTextProperty = new view_base_1.Property({ name: "automationText" });
+exports.automationTextProperty.register(ViewCommon);
+exports.originXProperty = new view_base_1.Property({ name: "originX", defaultValue: 0.5, valueConverter: function (v) { return parseFloat(v); } });
+exports.originXProperty.register(ViewCommon);
+exports.originYProperty = new view_base_1.Property({ name: "originY", defaultValue: 0.5, valueConverter: function (v) { return parseFloat(v); } });
+exports.originYProperty.register(ViewCommon);
+exports.isEnabledProperty = new view_base_1.Property({
+    name: "isEnabled",
+    defaultValue: true,
+    valueConverter: booleanConverter,
+    valueChanged: function (target, oldValue, newValue) {
+        target._goToVisualState(newValue ? "normal" : "disabled");
+    }
+});
+exports.isEnabledProperty.register(ViewCommon);
+exports.isUserInteractionEnabledProperty = new view_base_1.Property({ name: "isUserInteractionEnabled", defaultValue: true, valueConverter: booleanConverter });
+exports.isUserInteractionEnabledProperty.register(ViewCommon);
+exports.zeroLength = { value: 0, unit: "px" };
+exports.minWidthProperty = new view_base_1.CssProperty({
+    name: "minWidth", cssName: "min-width", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        if (target.view instanceof ViewCommon) {
+            target.view.effectiveMinWidth = Length.toDevicePixels(newValue, 0);
+        }
+    }, valueConverter: Length.parse
+});
+exports.minWidthProperty.register(view_base_1.Style);
+exports.minHeightProperty = new view_base_1.CssProperty({
+    name: "minHeight", cssName: "min-height", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        if (target.view instanceof ViewCommon) {
+            target.view.effectiveMinHeight = Length.toDevicePixels(newValue, 0);
+        }
+    }, valueConverter: Length.parse
+});
+exports.minHeightProperty.register(view_base_1.Style);
+exports.widthProperty = new view_base_1.CssProperty({ name: "width", cssName: "width", defaultValue: "auto", affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals, valueConverter: PercentLength.parse });
+exports.widthProperty.register(view_base_1.Style);
+exports.heightProperty = new view_base_1.CssProperty({ name: "height", cssName: "height", defaultValue: "auto", affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals, valueConverter: PercentLength.parse });
+exports.heightProperty.register(view_base_1.Style);
+var marginProperty = new view_base_1.ShorthandProperty({
+    name: "margin", cssName: "margin",
+    getter: function () {
+        if (PercentLength.equals(this.marginTop, this.marginRight) &&
+            PercentLength.equals(this.marginTop, this.marginBottom) &&
+            PercentLength.equals(this.marginTop, this.marginLeft)) {
+            return this.marginTop;
+        }
+        return PercentLength.convertToString(this.marginTop) + " " + PercentLength.convertToString(this.marginRight) + " " + PercentLength.convertToString(this.marginBottom) + " " + PercentLength.convertToString(this.marginLeft);
+    },
+    converter: convertToMargins
+});
+marginProperty.register(view_base_1.Style);
+exports.marginLeftProperty = new view_base_1.CssProperty({ name: "marginLeft", cssName: "margin-left", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals, valueConverter: PercentLength.parse });
+exports.marginLeftProperty.register(view_base_1.Style);
+exports.marginRightProperty = new view_base_1.CssProperty({ name: "marginRight", cssName: "margin-right", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals, valueConverter: PercentLength.parse });
+exports.marginRightProperty.register(view_base_1.Style);
+exports.marginTopProperty = new view_base_1.CssProperty({ name: "marginTop", cssName: "margin-top", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals, valueConverter: PercentLength.parse });
+exports.marginTopProperty.register(view_base_1.Style);
+exports.marginBottomProperty = new view_base_1.CssProperty({ name: "marginBottom", cssName: "margin-bottom", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals, valueConverter: PercentLength.parse });
+exports.marginBottomProperty.register(view_base_1.Style);
+var paddingProperty = new view_base_1.ShorthandProperty({
+    name: "padding", cssName: "padding",
+    getter: function () {
+        if (Length.equals(this.paddingTop, this.paddingRight) &&
+            Length.equals(this.paddingTop, this.paddingBottom) &&
+            Length.equals(this.paddingTop, this.paddingLeft)) {
+            return this.paddingTop;
+        }
+        return Length.convertToString(this.paddingTop) + " " + Length.convertToString(this.paddingRight) + " " + Length.convertToString(this.paddingBottom) + " " + Length.convertToString(this.paddingLeft);
+    },
+    converter: convertToPaddings
+});
+paddingProperty.register(view_base_1.Style);
+exports.paddingLeftProperty = new view_base_1.CssProperty({
+    name: "paddingLeft", cssName: "padding-left", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        if (target.view instanceof ViewCommon) {
+            target.view.effectivePaddingLeft = Length.toDevicePixels(newValue, 0);
+        }
+    }, valueConverter: Length.parse
+});
+exports.paddingLeftProperty.register(view_base_1.Style);
+exports.paddingRightProperty = new view_base_1.CssProperty({
+    name: "paddingRight", cssName: "padding-right", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        if (target.view instanceof ViewCommon) {
+            target.view.effectivePaddingRight = Length.toDevicePixels(newValue, 0);
+        }
+    }, valueConverter: Length.parse
+});
+exports.paddingRightProperty.register(view_base_1.Style);
+exports.paddingTopProperty = new view_base_1.CssProperty({
+    name: "paddingTop", cssName: "padding-top", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        if (target.view instanceof ViewCommon) {
+            target.view.effectivePaddingTop = Length.toDevicePixels(newValue, 0);
+        }
+    }, valueConverter: Length.parse
+});
+exports.paddingTopProperty.register(view_base_1.Style);
+exports.paddingBottomProperty = new view_base_1.CssProperty({
+    name: "paddingBottom", cssName: "padding-bottom", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        if (target.view instanceof ViewCommon) {
+            target.view.effectivePaddingBottom = Length.toDevicePixels(newValue, 0);
+        }
+    }, valueConverter: Length.parse
+});
+exports.paddingBottomProperty.register(view_base_1.Style);
+var HorizontalAlignment;
+(function (HorizontalAlignment) {
+    HorizontalAlignment.LEFT = "left";
+    HorizontalAlignment.CENTER = "center";
+    HorizontalAlignment.RIGHT = "right";
+    HorizontalAlignment.STRETCH = "stretch";
+    HorizontalAlignment.isValid = view_base_1.makeValidator(HorizontalAlignment.LEFT, HorizontalAlignment.CENTER, HorizontalAlignment.RIGHT, HorizontalAlignment.STRETCH);
+    HorizontalAlignment.parse = view_base_1.makeParser(HorizontalAlignment.isValid);
+})(HorizontalAlignment = exports.HorizontalAlignment || (exports.HorizontalAlignment = {}));
+exports.horizontalAlignmentProperty = new view_base_1.CssProperty({ name: "horizontalAlignment", cssName: "horizontal-align", defaultValue: HorizontalAlignment.STRETCH, affectsLayout: view_base_1.isIOS, valueConverter: HorizontalAlignment.parse });
+exports.horizontalAlignmentProperty.register(view_base_1.Style);
+var VerticalAlignment;
+(function (VerticalAlignment) {
+    VerticalAlignment.TOP = "top";
+    VerticalAlignment.MIDDLE = "middle";
+    VerticalAlignment.BOTTOM = "bottom";
+    VerticalAlignment.STRETCH = "stretch";
+    VerticalAlignment.isValid = view_base_1.makeValidator(VerticalAlignment.TOP, VerticalAlignment.MIDDLE, VerticalAlignment.BOTTOM, VerticalAlignment.STRETCH);
+    VerticalAlignment.parse = function (value) { return value.toLowerCase() === "center" ? VerticalAlignment.MIDDLE : parseStrict(value); };
+    var parseStrict = view_base_1.makeParser(VerticalAlignment.isValid);
+})(VerticalAlignment = exports.VerticalAlignment || (exports.VerticalAlignment = {}));
+exports.verticalAlignmentProperty = new view_base_1.CssProperty({ name: "verticalAlignment", cssName: "vertical-align", defaultValue: VerticalAlignment.STRETCH, affectsLayout: view_base_1.isIOS, valueConverter: VerticalAlignment.parse });
+exports.verticalAlignmentProperty.register(view_base_1.Style);
+function parseThickness(value) {
+    if (typeof value === "string") {
+        var arr = value.split(/[ ,]+/);
+        var top_1;
+        var right = void 0;
+        var bottom = void 0;
+        var left = void 0;
+        if (arr.length === 1) {
+            top_1 = arr[0];
+            right = arr[0];
+            bottom = arr[0];
+            left = arr[0];
+        }
+        else if (arr.length === 2) {
+            top_1 = arr[0];
+            bottom = arr[0];
+            right = arr[1];
+            left = arr[1];
+        }
+        else if (arr.length === 3) {
+            top_1 = arr[0];
+            right = arr[1];
+            left = arr[1];
+            bottom = arr[2];
+        }
+        else if (arr.length === 4) {
+            top_1 = arr[0];
+            right = arr[1];
+            bottom = arr[2];
+            left = arr[3];
+        }
+        else {
+            throw new Error("Expected 1, 2, 3 or 4 parameters. Actual: " + value);
+        }
+        return {
+            top: top_1,
+            right: right,
+            bottom: bottom,
+            left: left
+        };
+    }
+    else {
+        return value;
+    }
+}
+function convertToMargins(value) {
+    if (typeof value === "string" && value !== "auto") {
+        var thickness = parseThickness(value);
+        return [
+            [exports.marginTopProperty, PercentLength.parse(thickness.top)],
+            [exports.marginRightProperty, PercentLength.parse(thickness.right)],
+            [exports.marginBottomProperty, PercentLength.parse(thickness.bottom)],
+            [exports.marginLeftProperty, PercentLength.parse(thickness.left)]
+        ];
+    }
+    else {
+        return [
+            [exports.marginTopProperty, value],
+            [exports.marginRightProperty, value],
+            [exports.marginBottomProperty, value],
+            [exports.marginLeftProperty, value]
+        ];
+    }
+}
+function convertToPaddings(value) {
+    if (typeof value === "string" && value !== "auto") {
+        var thickness = parseThickness(value);
+        return [
+            [exports.paddingTopProperty, Length.parse(thickness.top)],
+            [exports.paddingRightProperty, Length.parse(thickness.right)],
+            [exports.paddingBottomProperty, Length.parse(thickness.bottom)],
+            [exports.paddingLeftProperty, Length.parse(thickness.left)]
+        ];
+    }
+    else {
+        return [
+            [exports.paddingTopProperty, value],
+            [exports.paddingRightProperty, value],
+            [exports.paddingBottomProperty, value],
+            [exports.paddingLeftProperty, value]
+        ];
+    }
+}
+exports.rotateProperty = new view_base_1.CssAnimationProperty({ name: "rotate", cssName: "rotate", defaultValue: 0, valueConverter: parseFloat });
+exports.rotateProperty.register(view_base_1.Style);
+exports.scaleXProperty = new view_base_1.CssAnimationProperty({ name: "scaleX", cssName: "scaleX", defaultValue: 1, valueConverter: parseFloat });
+exports.scaleXProperty.register(view_base_1.Style);
+exports.scaleYProperty = new view_base_1.CssAnimationProperty({ name: "scaleY", cssName: "scaleY", defaultValue: 1, valueConverter: parseFloat });
+exports.scaleYProperty.register(view_base_1.Style);
+exports.translateXProperty = new view_base_1.CssAnimationProperty({ name: "translateX", cssName: "translateX", defaultValue: 0, valueConverter: Length.parse, equalityComparer: Length.equals });
+exports.translateXProperty.register(view_base_1.Style);
+exports.translateYProperty = new view_base_1.CssAnimationProperty({ name: "translateY", cssName: "translateY", defaultValue: 0, valueConverter: Length.parse, equalityComparer: Length.equals });
+exports.translateYProperty.register(view_base_1.Style);
+var transformProperty = new view_base_1.ShorthandProperty({
+    name: "transform", cssName: "transform",
+    getter: function () {
+        var scaleX = this.scaleX;
+        var scaleY = this.scaleY;
+        var translateX = this.translateX;
+        var translateY = this.translateY;
+        var rotate = this.rotate;
+        var result = "";
+        if (translateX !== 0 || translateY !== 0) {
+            result += "translate(" + translateX + ", " + translateY + ") ";
+        }
+        if (scaleX !== 1 || scaleY !== 1) {
+            result += "scale(" + scaleX + ", " + scaleY + ") ";
+        }
+        if (rotate !== 0) {
+            result += "rotate (" + rotate + ")";
+        }
+        return result.trim();
+    },
+    converter: convertToTransform
+});
+transformProperty.register(view_base_1.Style);
+function transformConverter(value) {
+    if (value.indexOf("none") !== -1) {
+        var operations_1 = {};
+        operations_1[value] = value;
+        return operations_1;
+    }
+    var operations = {};
+    var operator = "";
+    var pos = 0;
+    while (pos < value.length) {
+        if (value[pos] === " " || value[pos] === ",") {
+            pos++;
+        }
+        else if (value[pos] === "(") {
+            var start = pos + 1;
+            while (pos < value.length && value[pos] !== ")") {
+                pos++;
+            }
+            var operand = value.substring(start, pos);
+            operations[operator] = operand.trim();
+            operator = "";
+            pos++;
+        }
+        else {
+            operator += value[pos++];
+        }
+    }
+    return operations;
+}
+function convertToTransform(value) {
+    var newTransform = value === view_base_1.unsetValue ? { "none": "none" } : transformConverter(value);
+    var array = [];
+    var values;
+    for (var transform in newTransform) {
+        switch (transform) {
+            case "scaleX":
+                array.push([exports.scaleXProperty, newTransform[transform]]);
+                break;
+            case "scaleY":
+                array.push([exports.scaleYProperty, newTransform[transform]]);
+                break;
+            case "scale":
+            case "scale3d":
+                values = newTransform[transform].split(",");
+                if (values.length >= 2) {
+                    array.push([exports.scaleXProperty, values[0]]);
+                    array.push([exports.scaleYProperty, values[1]]);
+                }
+                else if (values.length === 1) {
+                    array.push([exports.scaleXProperty, values[0]]);
+                    array.push([exports.scaleYProperty, values[0]]);
+                }
+                break;
+            case "translateX":
+                array.push([exports.translateXProperty, newTransform[transform]]);
+                break;
+            case "translateY":
+                array.push([exports.translateYProperty, newTransform[transform]]);
+                break;
+            case "translate":
+            case "translate3d":
+                values = newTransform[transform].split(",");
+                if (values.length >= 2) {
+                    array.push([exports.translateXProperty, values[0]]);
+                    array.push([exports.translateYProperty, values[1]]);
+                }
+                else if (values.length === 1) {
+                    array.push([exports.translateXProperty, values[0]]);
+                    array.push([exports.translateYProperty, values[0]]);
+                }
+                break;
+            case "rotate":
+                var text = newTransform[transform];
+                var val = parseFloat(text);
+                if (text.slice(-3) === "rad") {
+                    val = val * (180.0 / Math.PI);
+                }
+                array.push([exports.rotateProperty, val]);
+                break;
+            case "none":
+                array.push([exports.scaleXProperty, 1]);
+                array.push([exports.scaleYProperty, 1]);
+                array.push([exports.translateXProperty, 0]);
+                array.push([exports.translateYProperty, 0]);
+                array.push([exports.rotateProperty, 0]);
+                break;
+        }
+    }
+    return array;
+}
+exports.backgroundInternalProperty = new view_base_1.CssProperty({
+    name: "backgroundInternal",
+    cssName: "_backgroundInternal",
+    defaultValue: background_1.Background.default
+});
+exports.backgroundInternalProperty.register(view_base_1.Style);
+var pattern = /url\(('|")(.*?)\1\)/;
+exports.backgroundImageProperty = new view_base_1.CssProperty({
+    name: "backgroundImage", cssName: "background-image", valueChanged: function (target, oldValue, newValue) {
+        var style = target;
+        var currentBackground = target.backgroundInternal;
+        var url = newValue;
+        var isValid = false;
+        if (url === undefined) {
+            style.backgroundInternal = currentBackground.withImage(undefined);
             return;
         }
-        this.style._beginUpdate();
-        this._cssState.apply();
-        this.style._endUpdate();
-    };
-    View.loadedEvent = "loaded";
-    View.unloadedEvent = "unloaded";
-    View.automationTextProperty = automationTextProperty;
-    View.idProperty = idProperty;
-    View.cssClassProperty = cssClassProperty;
-    View.classNameProperty = classNameProperty;
-    View.originXProperty = originXProperty;
-    View.originYProperty = originYProperty;
-    View.isEnabledProperty = isEnabledProperty;
-    View.isUserInteractionEnabledProperty = isUserInteractionEnabledProperty;
-    return View;
-}(proxy_1.ProxyObject));
-exports.View = View;
+        var match = url.match(pattern);
+        if (match && match[2]) {
+            url = match[2];
+        }
+        if (utils_1.isDataURI(url)) {
+            var base64Data = url.split(",")[1];
+            if (typeof base64Data !== "undefined") {
+                style.backgroundInternal = currentBackground.withImage(image_source_1.fromBase64(base64Data));
+                isValid = true;
+            }
+            else {
+                style.backgroundInternal = currentBackground.withImage(undefined);
+            }
+        }
+        else if (utils_1.isFileOrResourcePath(url)) {
+            style.backgroundInternal = currentBackground.withImage(image_source_1.fromFileOrResource(url));
+            isValid = true;
+        }
+        else if (url.indexOf("http") !== -1) {
+            style["_url"] = url;
+            style.backgroundInternal = currentBackground.withImage(undefined);
+            image_source_1.fromUrl(url).then(function (r) {
+                if (style && style["_url"] === url) {
+                    currentBackground = target.backgroundInternal;
+                    target.backgroundInternal = currentBackground.withImage(r);
+                }
+            });
+            isValid = true;
+        }
+        if (!isValid) {
+            style.backgroundInternal = currentBackground.withImage(undefined);
+        }
+    }
+});
+exports.backgroundImageProperty.register(view_base_1.Style);
+exports.backgroundColorProperty = new view_base_1.CssAnimationProperty({
+    name: "backgroundColor", cssName: "background-color", valueChanged: function (target, oldValue, newValue) {
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withColor(newValue);
+    }, equalityComparer: color_1.Color.equals, valueConverter: function (value) { return new color_1.Color(value); }
+});
+exports.backgroundColorProperty.register(view_base_1.Style);
+var BackgroundRepeat;
+(function (BackgroundRepeat) {
+    BackgroundRepeat.REPEAT = "repeat";
+    BackgroundRepeat.REPEAT_X = "repeat-x";
+    BackgroundRepeat.REPEAT_Y = "repeat-y";
+    BackgroundRepeat.NO_REPEAT = "no-repeat";
+    BackgroundRepeat.isValid = view_base_1.makeValidator(BackgroundRepeat.REPEAT, BackgroundRepeat.REPEAT_X, BackgroundRepeat.REPEAT_Y, BackgroundRepeat.NO_REPEAT);
+    BackgroundRepeat.parse = view_base_1.makeParser(BackgroundRepeat.isValid);
+})(BackgroundRepeat = exports.BackgroundRepeat || (exports.BackgroundRepeat = {}));
+exports.backgroundRepeatProperty = new view_base_1.CssProperty({
+    name: "backgroundRepeat", cssName: "background-repeat", valueConverter: BackgroundRepeat.parse,
+    valueChanged: function (target, oldValue, newValue) {
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withRepeat(newValue);
+    }
+});
+exports.backgroundRepeatProperty.register(view_base_1.Style);
+exports.backgroundSizeProperty = new view_base_1.CssProperty({
+    name: "backgroundSize", cssName: "background-size", valueChanged: function (target, oldValue, newValue) {
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withSize(newValue);
+    }
+});
+exports.backgroundSizeProperty.register(view_base_1.Style);
+exports.backgroundPositionProperty = new view_base_1.CssProperty({
+    name: "backgroundPosition", cssName: "background-position", valueChanged: function (target, oldValue, newValue) {
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withPosition(newValue);
+    }
+});
+exports.backgroundPositionProperty.register(view_base_1.Style);
+function parseBorderColor(value) {
+    var result = { top: undefined, right: undefined, bottom: undefined, left: undefined };
+    if (value.indexOf("rgb") === 0) {
+        result.top = result.right = result.bottom = result.left = new color_1.Color(value);
+        return result;
+    }
+    var arr = value.split(/[ ,]+/);
+    if (arr.length === 1) {
+        var arr0 = new color_1.Color(arr[0]);
+        result.top = arr0;
+        result.right = arr0;
+        result.bottom = arr0;
+        result.left = arr0;
+    }
+    else if (arr.length === 2) {
+        var arr0 = new color_1.Color(arr[0]);
+        var arr1 = new color_1.Color(arr[1]);
+        result.top = arr0;
+        result.right = arr1;
+        result.bottom = arr0;
+        result.left = arr1;
+    }
+    else if (arr.length === 3) {
+        var arr0 = new color_1.Color(arr[0]);
+        var arr1 = new color_1.Color(arr[1]);
+        var arr2 = new color_1.Color(arr[2]);
+        result.top = arr0;
+        result.right = arr1;
+        result.bottom = arr2;
+        result.left = arr1;
+    }
+    else if (arr.length === 4) {
+        var arr0 = new color_1.Color(arr[0]);
+        var arr1 = new color_1.Color(arr[1]);
+        var arr2 = new color_1.Color(arr[2]);
+        var arr3 = new color_1.Color(arr[3]);
+        result.top = arr0;
+        result.right = arr1;
+        result.bottom = arr2;
+        result.left = arr3;
+    }
+    else {
+        throw new Error("Expected 1, 2, 3 or 4 parameters. Actual: " + value);
+    }
+    return result;
+}
+var borderColorProperty = new view_base_1.ShorthandProperty({
+    name: "borderColor", cssName: "border-color",
+    getter: function () {
+        if (color_1.Color.equals(this.borderTopColor, this.borderRightColor) &&
+            color_1.Color.equals(this.borderTopColor, this.borderBottomColor) &&
+            color_1.Color.equals(this.borderTopColor, this.borderLeftColor)) {
+            return this.borderTopColor;
+        }
+        else {
+            return this.borderTopColor + " " + this.borderRightColor + " " + this.borderBottomColor + " " + this.borderLeftColor;
+        }
+    },
+    converter: function (value) {
+        if (typeof value === "string") {
+            var fourColors = parseBorderColor(value);
+            return [
+                [exports.borderTopColorProperty, fourColors.top],
+                [exports.borderRightColorProperty, fourColors.right],
+                [exports.borderBottomColorProperty, fourColors.bottom],
+                [exports.borderLeftColorProperty, fourColors.left]
+            ];
+        }
+        else {
+            return [
+                [exports.borderTopColorProperty, value],
+                [exports.borderRightColorProperty, value],
+                [exports.borderBottomColorProperty, value],
+                [exports.borderLeftColorProperty, value]
+            ];
+        }
+    }
+});
+borderColorProperty.register(view_base_1.Style);
+exports.borderTopColorProperty = new view_base_1.CssProperty({
+    name: "borderTopColor", cssName: "border-top-color", valueChanged: function (target, oldValue, newValue) {
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderTopColor(newValue);
+    }, equalityComparer: color_1.Color.equals, valueConverter: function (value) { return new color_1.Color(value); }
+});
+exports.borderTopColorProperty.register(view_base_1.Style);
+exports.borderRightColorProperty = new view_base_1.CssProperty({
+    name: "borderRightColor", cssName: "border-right-color", valueChanged: function (target, oldValue, newValue) {
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderRightColor(newValue);
+    }, equalityComparer: color_1.Color.equals, valueConverter: function (value) { return new color_1.Color(value); }
+});
+exports.borderRightColorProperty.register(view_base_1.Style);
+exports.borderBottomColorProperty = new view_base_1.CssProperty({
+    name: "borderBottomColor", cssName: "border-bottom-color", valueChanged: function (target, oldValue, newValue) {
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderBottomColor(newValue);
+    }, equalityComparer: color_1.Color.equals, valueConverter: function (value) { return new color_1.Color(value); }
+});
+exports.borderBottomColorProperty.register(view_base_1.Style);
+exports.borderLeftColorProperty = new view_base_1.CssProperty({
+    name: "borderLeftColor", cssName: "border-left-color", valueChanged: function (target, oldValue, newValue) {
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderLeftColor(newValue);
+    }, equalityComparer: color_1.Color.equals, valueConverter: function (value) { return new color_1.Color(value); }
+});
+exports.borderLeftColorProperty.register(view_base_1.Style);
+var borderWidthProperty = new view_base_1.ShorthandProperty({
+    name: "borderWidth", cssName: "border-width",
+    getter: function () {
+        if (Length.equals(this.borderTopWidth, this.borderRightWidth) &&
+            Length.equals(this.borderTopWidth, this.borderBottomWidth) &&
+            Length.equals(this.borderTopWidth, this.borderLeftWidth)) {
+            return this.borderTopWidth;
+        }
+        else {
+            return Length.convertToString(this.borderTopWidth) + " " + Length.convertToString(this.borderRightWidth) + " " + Length.convertToString(this.borderBottomWidth) + " " + Length.convertToString(this.borderLeftWidth);
+        }
+    },
+    converter: function (value) {
+        if (typeof value === "string" && value !== "auto") {
+            var borderWidths = parseThickness(value);
+            return [
+                [exports.borderTopWidthProperty, borderWidths.top],
+                [exports.borderRightWidthProperty, borderWidths.right],
+                [exports.borderBottomWidthProperty, borderWidths.bottom],
+                [exports.borderLeftWidthProperty, borderWidths.left]
+            ];
+        }
+        else {
+            return [
+                [exports.borderTopWidthProperty, value],
+                [exports.borderRightWidthProperty, value],
+                [exports.borderBottomWidthProperty, value],
+                [exports.borderLeftWidthProperty, value]
+            ];
+        }
+    }
+});
+borderWidthProperty.register(view_base_1.Style);
+exports.borderTopWidthProperty = new view_base_1.CssProperty({
+    name: "borderTopWidth", cssName: "border-top-width", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        var value = Length.toDevicePixels(newValue, 0);
+        if (!isNonNegativeFiniteNumber(value)) {
+            throw new Error("border-top-width should be Non-Negative Finite number. Value: " + value);
+        }
+        if (target.view instanceof ViewCommon) {
+            target.view.effectiveBorderTopWidth = value;
+        }
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderTopWidth(value);
+    }, valueConverter: Length.parse
+});
+exports.borderTopWidthProperty.register(view_base_1.Style);
+exports.borderRightWidthProperty = new view_base_1.CssProperty({
+    name: "borderRightWidth", cssName: "border-right-width", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        var value = Length.toDevicePixels(newValue, 0);
+        if (!isNonNegativeFiniteNumber(value)) {
+            throw new Error("border-right-width should be Non-Negative Finite number. Value: " + value);
+        }
+        if (target.view instanceof ViewCommon) {
+            target.view.effectiveBorderRightWidth = value;
+        }
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderRightWidth(value);
+    }, valueConverter: Length.parse
+});
+exports.borderRightWidthProperty.register(view_base_1.Style);
+exports.borderBottomWidthProperty = new view_base_1.CssProperty({
+    name: "borderBottomWidth", cssName: "border-bottom-width", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        var value = Length.toDevicePixels(newValue, 0);
+        if (!isNonNegativeFiniteNumber(value)) {
+            throw new Error("border-bottom-width should be Non-Negative Finite number. Value: " + value);
+        }
+        if (target.view instanceof ViewCommon) {
+            target.view.effectiveBorderBottomWidth = value;
+        }
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderBottomWidth(value);
+    }, valueConverter: Length.parse
+});
+exports.borderBottomWidthProperty.register(view_base_1.Style);
+exports.borderLeftWidthProperty = new view_base_1.CssProperty({
+    name: "borderLeftWidth", cssName: "border-left-width", defaultValue: exports.zeroLength, affectsLayout: view_base_1.isIOS, equalityComparer: Length.equals,
+    valueChanged: function (target, oldValue, newValue) {
+        var value = Length.toDevicePixels(newValue, 0);
+        if (!isNonNegativeFiniteNumber(value)) {
+            throw new Error("border-left-width should be Non-Negative Finite number. Value: " + value);
+        }
+        if (target.view instanceof ViewCommon) {
+            target.view.effectiveBorderLeftWidth = value;
+        }
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderLeftWidth(value);
+    }, valueConverter: Length.parse
+});
+exports.borderLeftWidthProperty.register(view_base_1.Style);
+var borderRadiusProperty = new view_base_1.ShorthandProperty({
+    name: "borderRadius", cssName: "border-radius",
+    getter: function () {
+        if (Length.equals(this.borderTopLeftRadius, this.borderTopRightRadius) &&
+            Length.equals(this.borderTopLeftRadius, this.borderBottomRightRadius) &&
+            Length.equals(this.borderTopLeftRadius, this.borderBottomLeftRadius)) {
+            return this.borderTopLeftRadius;
+        }
+        return Length.convertToString(this.borderTopLeftRadius) + " " + Length.convertToString(this.borderTopRightRadius) + " " + Length.convertToString(this.borderBottomRightRadius) + " " + Length.convertToString(this.borderBottomLeftRadius);
+    },
+    converter: function (value) {
+        if (typeof value === "string") {
+            var borderRadius = parseThickness(value);
+            return [
+                [exports.borderTopLeftRadiusProperty, borderRadius.top],
+                [exports.borderTopRightRadiusProperty, borderRadius.right],
+                [exports.borderBottomRightRadiusProperty, borderRadius.bottom],
+                [exports.borderBottomLeftRadiusProperty, borderRadius.left]
+            ];
+        }
+        else {
+            return [
+                [exports.borderTopLeftRadiusProperty, value],
+                [exports.borderTopRightRadiusProperty, value],
+                [exports.borderBottomRightRadiusProperty, value],
+                [exports.borderBottomLeftRadiusProperty, value]
+            ];
+        }
+    }
+});
+borderRadiusProperty.register(view_base_1.Style);
+exports.borderTopLeftRadiusProperty = new view_base_1.CssProperty({
+    name: "borderTopLeftRadius", cssName: "border-top-left-radius", defaultValue: 0, affectsLayout: view_base_1.isIOS, valueChanged: function (target, oldValue, newValue) {
+        var value = Length.toDevicePixels(newValue, 0);
+        if (!isNonNegativeFiniteNumber(value)) {
+            throw new Error("border-top-left-radius should be Non-Negative Finite number. Value: " + value);
+        }
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderTopLeftRadius(value);
+    }, valueConverter: Length.parse
+});
+exports.borderTopLeftRadiusProperty.register(view_base_1.Style);
+exports.borderTopRightRadiusProperty = new view_base_1.CssProperty({
+    name: "borderTopRightRadius", cssName: "border-top-right-radius", defaultValue: 0, affectsLayout: view_base_1.isIOS, valueChanged: function (target, oldValue, newValue) {
+        var value = Length.toDevicePixels(newValue, 0);
+        if (!isNonNegativeFiniteNumber(value)) {
+            throw new Error("border-top-right-radius should be Non-Negative Finite number. Value: " + value);
+        }
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderTopRightRadius(value);
+    }, valueConverter: Length.parse
+});
+exports.borderTopRightRadiusProperty.register(view_base_1.Style);
+exports.borderBottomRightRadiusProperty = new view_base_1.CssProperty({
+    name: "borderBottomRightRadius", cssName: "border-bottom-right-radius", defaultValue: 0, affectsLayout: view_base_1.isIOS, valueChanged: function (target, oldValue, newValue) {
+        var value = Length.toDevicePixels(newValue, 0);
+        if (!isNonNegativeFiniteNumber(value)) {
+            throw new Error("border-bottom-right-radius should be Non-Negative Finite number. Value: " + value);
+        }
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderBottomRightRadius(value);
+    }, valueConverter: Length.parse
+});
+exports.borderBottomRightRadiusProperty.register(view_base_1.Style);
+exports.borderBottomLeftRadiusProperty = new view_base_1.CssProperty({
+    name: "borderBottomLeftRadius", cssName: "border-bottom-left-radius", defaultValue: 0, affectsLayout: view_base_1.isIOS, valueChanged: function (target, oldValue, newValue) {
+        var value = Length.toDevicePixels(newValue, 0);
+        if (!isNonNegativeFiniteNumber(value)) {
+            throw new Error("border-bottom-left-radius should be Non-Negative Finite number. Value: " + value);
+        }
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withBorderBottomLeftRadius(value);
+    }, valueConverter: Length.parse
+});
+exports.borderBottomLeftRadiusProperty.register(view_base_1.Style);
+function isNonNegativeFiniteNumber(value) {
+    return isFinite(value) && !isNaN(value) && value >= 0;
+}
+var supportedPaths = ["rect", "circle", "ellipse", "polygon", "inset"];
+function isClipPathValid(value) {
+    if (!value) {
+        return true;
+    }
+    var functionName = value.substring(0, value.indexOf("(")).trim();
+    return supportedPaths.indexOf(functionName) !== -1;
+}
+exports.clipPathProperty = new view_base_1.CssProperty({
+    name: "clipPath", cssName: "clip-path", valueChanged: function (target, oldValue, newValue) {
+        if (!isClipPathValid(newValue)) {
+            throw new Error("clip-path is not valid.");
+        }
+        var background = target.backgroundInternal;
+        target.backgroundInternal = background.withClipPath(newValue);
+    }
+});
+exports.clipPathProperty.register(view_base_1.Style);
+function isFloatValueConverter(value) {
+    var newValue = parseFloat(value);
+    if (isNaN(newValue)) {
+        throw new Error("Invalid value: " + newValue);
+    }
+    return newValue;
+}
+exports.zIndexProperty = new view_base_1.CssProperty({ name: "zIndex", cssName: "z-index", defaultValue: Number.NaN, valueConverter: isFloatValueConverter });
+exports.zIndexProperty.register(view_base_1.Style);
+function opacityConverter(value) {
+    var newValue = parseFloat(value);
+    if (!isNaN(newValue) && 0 <= newValue && newValue <= 1) {
+        return newValue;
+    }
+    throw new Error("Opacity should be between [0, 1]. Value: " + newValue);
+}
+exports.opacityProperty = new view_base_1.CssAnimationProperty({ name: "opacity", cssName: "opacity", defaultValue: 1, valueConverter: opacityConverter });
+exports.opacityProperty.register(view_base_1.Style);
+exports.colorProperty = new view_base_1.InheritedCssProperty({ name: "color", cssName: "color", equalityComparer: color_1.Color.equals, valueConverter: function (v) { return new color_1.Color(v); } });
+exports.colorProperty.register(view_base_1.Style);
+exports.fontInternalProperty = new view_base_1.CssProperty({ name: "fontInternal", cssName: "_fontInternal", defaultValue: font_1.Font.default });
+exports.fontInternalProperty.register(view_base_1.Style);
+exports.fontFamilyProperty = new view_base_1.InheritedCssProperty({
+    name: "fontFamily", cssName: "font-family", affectsLayout: view_base_1.isIOS, valueChanged: function (target, oldValue, newValue) {
+        var currentFont = target.fontInternal;
+        if (currentFont.fontFamily !== newValue) {
+            var newFont = currentFont.withFontFamily(newValue);
+            target.fontInternal = font_1.Font.equals(font_1.Font.default, newFont) ? view_base_1.unsetValue : newFont;
+        }
+    }
+});
+exports.fontFamilyProperty.register(view_base_1.Style);
+exports.fontSizeProperty = new view_base_1.InheritedCssProperty({
+    name: "fontSize", cssName: "font-size", affectsLayout: view_base_1.isIOS, valueChanged: function (target, oldValue, newValue) {
+        var currentFont = target.fontInternal;
+        if (currentFont.fontSize !== newValue) {
+            var newFont = currentFont.withFontSize(newValue);
+            target.fontInternal = font_1.Font.equals(font_1.Font.default, newFont) ? view_base_1.unsetValue : newFont;
+        }
+    },
+    valueConverter: function (v) { return parseFloat(v); }
+});
+exports.fontSizeProperty.register(view_base_1.Style);
+exports.fontStyleProperty = new view_base_1.InheritedCssProperty({
+    name: "fontStyle", cssName: "font-style", affectsLayout: view_base_1.isIOS, defaultValue: font_1.FontStyle.NORMAL, valueConverter: font_1.FontStyle.parse, valueChanged: function (target, oldValue, newValue) {
+        var currentFont = target.fontInternal;
+        if (currentFont.fontStyle !== newValue) {
+            var newFont = currentFont.withFontStyle(newValue);
+            target.fontInternal = font_1.Font.equals(font_1.Font.default, newFont) ? view_base_1.unsetValue : newFont;
+        }
+    }
+});
+exports.fontStyleProperty.register(view_base_1.Style);
+exports.fontWeightProperty = new view_base_1.InheritedCssProperty({
+    name: "fontWeight", cssName: "font-weight", affectsLayout: view_base_1.isIOS, defaultValue: font_1.FontWeight.NORMAL, valueConverter: font_1.FontWeight.parse, valueChanged: function (target, oldValue, newValue) {
+        var currentFont = target.fontInternal;
+        if (currentFont.fontWeight !== newValue) {
+            var newFont = currentFont.withFontWeight(newValue);
+            target.fontInternal = font_1.Font.equals(font_1.Font.default, newFont) ? view_base_1.unsetValue : newFont;
+        }
+    }
+});
+exports.fontWeightProperty.register(view_base_1.Style);
+var fontProperty = new view_base_1.ShorthandProperty({
+    name: "font", cssName: "font",
+    getter: function () {
+        return this.fontStyle + " " + this.fontWeight + " " + this.fontSize + " " + this.fontFamily;
+    },
+    converter: function (value) {
+        if (value === view_base_1.unsetValue) {
+            return [
+                [exports.fontStyleProperty, view_base_1.unsetValue],
+                [exports.fontWeightProperty, view_base_1.unsetValue],
+                [exports.fontSizeProperty, view_base_1.unsetValue],
+                [exports.fontFamilyProperty, view_base_1.unsetValue]
+            ];
+        }
+        else {
+            var font = font_1.parseFont(value);
+            var fontSize = parseFloat(font.fontSize);
+            return [
+                [exports.fontStyleProperty, font.fontStyle],
+                [exports.fontWeightProperty, font.fontWeight],
+                [exports.fontSizeProperty, fontSize],
+                [exports.fontFamilyProperty, font.fontFamily]
+            ];
+        }
+    }
+});
+fontProperty.register(view_base_1.Style);
+var Visibility;
+(function (Visibility) {
+    Visibility.VISIBLE = "visible";
+    Visibility.HIDDEN = "hidden";
+    Visibility.COLLAPSE = "collapse";
+    Visibility.isValid = view_base_1.makeValidator(Visibility.VISIBLE, Visibility.HIDDEN, Visibility.COLLAPSE);
+    Visibility.parse = function (value) { return value.toLowerCase() === "collapsed" ? Visibility.COLLAPSE : parseStrict(value); };
+    var parseStrict = view_base_1.makeParser(Visibility.isValid);
+})(Visibility = exports.Visibility || (exports.Visibility = {}));
+exports.visibilityProperty = new view_base_1.CssProperty({
+    name: "visibility", cssName: "visibility", defaultValue: Visibility.VISIBLE, affectsLayout: view_base_1.isIOS, valueConverter: Visibility.parse, valueChanged: function (target, oldValue, newValue) {
+        target.view.isCollapsed = (newValue === Visibility.COLLAPSE);
+    }
+});
+exports.visibilityProperty.register(view_base_1.Style);
 //# sourceMappingURL=view-common.js.map

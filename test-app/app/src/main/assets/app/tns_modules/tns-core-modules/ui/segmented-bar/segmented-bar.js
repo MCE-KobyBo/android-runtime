@@ -1,120 +1,235 @@
-var common = require("./segmented-bar-common");
-var types = require("utils/types");
-var style = require("ui/styling/style");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var font_1 = require("../styling/font");
+var segmented_bar_common_1 = require("./segmented-bar-common");
+__export(require("./segmented-bar-common"));
 var R_ID_TABS = 0x01020013;
 var R_ID_TABCONTENT = 0x01020011;
 var R_ATTR_STATE_SELECTED = 0x010100a1;
-global.moduleMerge(common, exports);
-function onSelectedIndexPropertyChanged(data) {
-    var view = data.object;
-    if (!view.android || !view.items) {
+var TITLE_TEXT_VIEW_ID = 16908310; // http://developer.android.com/reference/android/R.id.html#title
+var apiLevel;
+var selectedIndicatorThickness;
+var TabHost;
+var TabChangeListener;
+var TabContentFactory;
+function initializeNativeClasses() {
+    if (TabChangeListener) {
         return;
     }
-    var index = data.newValue;
-    if (types.isNumber(index)) {
-        if (index >= 0 && index <= view.items.length - 1) {
-            view.android.setCurrentTab(index);
-            view.notify({ eventName: SegmentedBar.selectedIndexChangedEvent, object: view, oldIndex: data.oldValue, newIndex: data.newValue });
-        }
-        else {
-            view.selectedIndex = undefined;
-            throw new Error("selectedIndex should be between [0, " + (view.items.length - 1) + "]");
-        }
-    }
-}
-common.SegmentedBar.selectedIndexProperty.metadata.onSetNativeValue = onSelectedIndexPropertyChanged;
-function onItemsPropertyChanged(data) {
-    var view = data.object;
-    if (!view.android) {
-        return;
-    }
-    var oldItems = data.oldValue;
-    if (oldItems && oldItems.length) {
-        for (var i = 0; i < oldItems.length; i++) {
-            oldItems[i]._parent = null;
-        }
-    }
-    view.android.clearAllTabs();
-    var newItems = data.newValue;
-    view._adjustSelectedIndex(newItems);
-    if (newItems && newItems.length) {
-        for (var i = 0; i < newItems.length; i++) {
-            view.insertTab(newItems[i], i);
-        }
-        if (types.isNumber(view.selectedIndex) && view.android.getCurrentTab() !== view.selectedIndex) {
-            view.android.setCurrentTab(view.selectedIndex);
-        }
-        var tabHost = view.android;
-        var tabIndex;
-        for (tabIndex = 0; tabIndex < tabHost.getTabWidget().getTabCount(); tabIndex++) {
-            var tabChild = tabHost.getTabWidget().getChildTabViewAt(tabIndex);
-            var t = tabChild.getChildAt(1);
-            if (view.color) {
-                t.setTextColor(view.color.android);
-            }
-            t.setMaxLines(1);
-            t.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        }
-    }
-}
-common.SegmentedBar.itemsProperty.metadata.onSetNativeValue = onItemsPropertyChanged;
-var SegmentedBarColorDrawableClass;
-function ensureSegmentedBarColorDrawableClass() {
-    if (SegmentedBarColorDrawableClass) {
-        return;
-    }
-    var SegmentedBarColorDrawable = (function (_super) {
-        __extends(SegmentedBarColorDrawable, _super);
-        function SegmentedBarColorDrawable(arg) {
-            _super.call(this, arg);
+    apiLevel = android.os.Build.VERSION.SDK_INT;
+    // Indicator thickness for material - 2dip. For pre-material - 5dip. 
+    selectedIndicatorThickness = segmented_bar_common_1.layout.toDevicePixels(apiLevel >= 21 ? 2 : 5);
+    var TabChangeListenerImpl = (function (_super) {
+        __extends(TabChangeListenerImpl, _super);
+        function TabChangeListenerImpl(owner) {
+            _super.call(this);
+            this.owner = owner;
             return global.__native(this);
         }
-        SegmentedBarColorDrawable.prototype.draw = function (canvas) {
-            var p = new android.graphics.Paint();
-            p.setColor(this.getColor());
-            p.setStyle(android.graphics.Paint.Style.FILL);
-            canvas.drawRect(0, this.getBounds().height() - 15, this.getBounds().width(), this.getBounds().height(), p);
+        TabChangeListenerImpl.prototype.onTabChanged = function (id) {
+            var owner = this.owner;
+            if (owner.shouldChangeSelectedIndex()) {
+                owner.selectedIndex = parseInt(id);
+            }
         };
-        return SegmentedBarColorDrawable;
-    }(android.graphics.drawable.ColorDrawable));
-    SegmentedBarColorDrawableClass = SegmentedBarColorDrawable;
+        TabChangeListenerImpl = __decorate([
+            Interfaces([android.widget.TabHost.OnTabChangeListener])
+        ], TabChangeListenerImpl);
+        return TabChangeListenerImpl;
+    }(java.lang.Object));
+    var TabContentFactoryImpl = (function (_super) {
+        __extends(TabContentFactoryImpl, _super);
+        function TabContentFactoryImpl(owner) {
+            _super.call(this);
+            this.owner = owner;
+            return global.__native(this);
+        }
+        TabContentFactoryImpl.prototype.createTabContent = function (tag) {
+            var tv = new android.widget.TextView(this.owner._context);
+            // This is collapsed by default and made visible 
+            // by android when TabItem becomes visible/selected.
+            // TODO: Try commenting visibility change.
+            tv.setVisibility(android.view.View.GONE);
+            tv.setMaxLines(1);
+            tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            return tv;
+        };
+        TabContentFactoryImpl = __decorate([
+            Interfaces([android.widget.TabHost.TabContentFactory])
+        ], TabContentFactoryImpl);
+        return TabContentFactoryImpl;
+    }(java.lang.Object));
+    var TabHostImpl = (function (_super) {
+        __extends(TabHostImpl, _super);
+        function TabHostImpl(context, attrs) {
+            _super.call(this, context, attrs);
+            return global.__native(this);
+        }
+        TabHostImpl.prototype.onAttachedToWindow = function () {
+            // overriden to remove the code that will steal the focus from edit fields.
+        };
+        return TabHostImpl;
+    }(android.widget.TabHost));
+    TabHost = TabHostImpl;
+    TabChangeListener = TabChangeListenerImpl;
+    TabContentFactory = TabContentFactoryImpl;
 }
 var SegmentedBarItem = (function (_super) {
     __extends(SegmentedBarItem, _super);
     function SegmentedBarItem() {
         _super.apply(this, arguments);
     }
-    SegmentedBarItem.prototype._update = function () {
-        if (this._parent && this._parent.android) {
-            var tabIndex = this._parent.items.indexOf(this);
-            var titleTextViewId = 16908310;
-            var titleTextView = this._parent.android.getTabWidget().getChildAt(tabIndex).findViewById(titleTextViewId);
-            titleTextView.setText(this.title + "");
+    Object.defineProperty(SegmentedBarItem.prototype, "nativeView", {
+        get: function () {
+            return this._textView;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBarItem.prototype, "android", {
+        get: function () {
+            return this._textView;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    SegmentedBarItem.prototype.setupNativeView = function (tabIndex) {
+        // TabHost.TabSpec.setIndicator DOES NOT WORK once the title has been set.
+        // http://stackoverflow.com/questions/2935781/modify-tab-indicator-dynamically-in-android
+        var titleTextView = this.parent.android.getTabWidget().getChildAt(tabIndex).findViewById(TITLE_TEXT_VIEW_ID);
+        this._textView = titleTextView;
+        if (titleTextView) {
+            segmented_bar_common_1.initNativeView(this);
+            if (this.titleDirty) {
+                this._update();
+            }
         }
     };
+    SegmentedBarItem.prototype._update = function () {
+        var tv = this._textView;
+        if (tv) {
+            var title = this.title;
+            title = (title === null || title === undefined) ? "" : title;
+            tv.setText(title);
+            this.titleDirty = false;
+        }
+        else {
+            this.titleDirty = true;
+        }
+    };
+    Object.defineProperty(SegmentedBarItem.prototype, segmented_bar_common_1.colorProperty.native, {
+        get: function () {
+            return this._textView.getCurrentTextColor();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBarItem.prototype, segmented_bar_common_1.colorProperty.native, {
+        set: function (value) {
+            var color = value instanceof segmented_bar_common_1.Color ? value.android : value;
+            this._textView.setTextColor(color);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBarItem.prototype, segmented_bar_common_1.fontSizeProperty.native, {
+        get: function () {
+            return { nativeSize: this._textView.getTextSize() };
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBarItem.prototype, segmented_bar_common_1.fontSizeProperty.native, {
+        set: function (value) {
+            if (typeof value === "number") {
+                this._textView.setTextSize(value);
+            }
+            else {
+                this._textView.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, value.nativeSize);
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBarItem.prototype, segmented_bar_common_1.fontInternalProperty.native, {
+        get: function () {
+            return this._textView.getTypeface();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBarItem.prototype, segmented_bar_common_1.fontInternalProperty.native, {
+        set: function (value) {
+            this._textView.setTypeface(value instanceof font_1.Font ? value.getAndroidTypeface() : value);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBarItem.prototype, segmented_bar_common_1.selectedBackgroundColorProperty.native, {
+        get: function () {
+            var viewGroup = this._textView.getParent();
+            return viewGroup.getBackground().getConstantState();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBarItem.prototype, segmented_bar_common_1.selectedBackgroundColorProperty.native, {
+        set: function (value) {
+            var viewGroup = this._textView.getParent();
+            if (value instanceof segmented_bar_common_1.Color) {
+                var color = value.android;
+                var backgroundDrawable = viewGroup.getBackground();
+                if (apiLevel > 21 && backgroundDrawable && typeof backgroundDrawable.setColorFilter === "function") {
+                    var newDrawable = backgroundDrawable.getConstantState().newDrawable();
+                    newDrawable.setColorFilter(color, android.graphics.PorterDuff.Mode.SRC_IN);
+                    org.nativescript.widgets.ViewHelper.setBackground(viewGroup, newDrawable);
+                }
+                else {
+                    var stateDrawable = new android.graphics.drawable.StateListDrawable();
+                    var colorDrawable = new org.nativescript.widgets.SegmentedBarColorDrawable(color, selectedIndicatorThickness);
+                    var arr = Array.create("int", 1);
+                    arr[0] = R_ATTR_STATE_SELECTED;
+                    stateDrawable.addState(arr, colorDrawable);
+                    stateDrawable.setBounds(0, 15, viewGroup.getRight(), viewGroup.getBottom());
+                    org.nativescript.widgets.ViewHelper.setBackground(viewGroup, stateDrawable);
+                }
+            }
+            else {
+                org.nativescript.widgets.ViewHelper.setBackground(viewGroup, value.newDrawable());
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
     return SegmentedBarItem;
-}(common.SegmentedBarItem));
+}(segmented_bar_common_1.SegmentedBarItemBase));
 exports.SegmentedBarItem = SegmentedBarItem;
 var SegmentedBar = (function (_super) {
     __extends(SegmentedBar, _super);
     function SegmentedBar() {
         _super.apply(this, arguments);
     }
-    SegmentedBar.prototype._createUI = function () {
-        ensureTabHostClass();
-        this._android = new TabHostClass(this._context, null);
-        if (types.isNumber(this.selectedIndex) && this._android.getCurrentTab() !== this.selectedIndex) {
-            this._android.setCurrentTab(this.selectedIndex);
-        }
-        var that = new WeakRef(this);
-        this._listener = new android.widget.TabHost.OnTabChangeListener({
-            onTabChanged: function (id) {
-                var bar = that.get();
-                if (bar) {
-                    bar.selectedIndex = parseInt(id);
-                }
-            }
-        });
+    SegmentedBar.prototype.shouldChangeSelectedIndex = function () {
+        return !this._addingTab;
+    };
+    SegmentedBar.prototype._createNativeView = function () {
+        initializeNativeClasses();
+        this._android = new TabHost(this._context, null);
+        this.listener = this.listener || new TabChangeListener(this);
+        this.tabContentFactory = this.tabContentFactory || new TabContentFactory(this);
         var tabHostLayout = new android.widget.LinearLayout(this._context);
         tabHostLayout.setOrientation(android.widget.LinearLayout.VERTICAL);
         var tabWidget = new android.widget.TabWidget(this._context);
@@ -126,6 +241,8 @@ var SegmentedBar = (function (_super) {
         tabHostLayout.addView(frame);
         this._android.addView(tabHostLayout);
         this._android.setup();
+        this._android.setOnTabChangedListener(this.listener);
+        return this._android;
     };
     Object.defineProperty(SegmentedBar.prototype, "android", {
         get: function () {
@@ -135,161 +252,48 @@ var SegmentedBar = (function (_super) {
         configurable: true
     });
     SegmentedBar.prototype.insertTab = function (tabItem, index) {
-        _super.prototype.insertTab.call(this, tabItem, index);
-        tabItem._parent = this;
-        var tab = this.android.newTabSpec(this.getValidIndex(index) + "");
+        var tab = this.android.newTabSpec(index + "");
         tab.setIndicator(tabItem.title + "");
-        var that = this;
-        tab.setContent(new android.widget.TabHost.TabContentFactory({
-            createTabContent: function (tag) {
-                var tv = new android.widget.TextView(that._context);
-                tv.setVisibility(android.view.View.GONE);
-                return tv;
+        tab.setContent(this.tabContentFactory);
+        var tabHost = this.android;
+        this._addingTab = true;
+        tabHost.addTab(tab);
+        tabItem.setupNativeView(index);
+        this._addingTab = false;
+    };
+    Object.defineProperty(SegmentedBar.prototype, segmented_bar_common_1.selectedIndexProperty.native, {
+        get: function () {
+            return -1;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBar.prototype, segmented_bar_common_1.selectedIndexProperty.native, {
+        set: function (value) {
+            this._android.setCurrentTab(value);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBar.prototype, segmented_bar_common_1.itemsProperty.native, {
+        get: function () {
+            return null;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SegmentedBar.prototype, segmented_bar_common_1.itemsProperty.native, {
+        set: function (value) {
+            var _this = this;
+            this._android.clearAllTabs();
+            var newItems = value;
+            if (newItems) {
+                newItems.forEach(function (item, i, arr) { return _this.insertTab(item, i); });
             }
-        }));
-        this.android.addTab(tab);
-        this.resetNativeListener();
-    };
-    SegmentedBar.prototype.resetNativeListener = function () {
-        this.android.setOnTabChangedListener(null);
-        this.android.setOnTabChangedListener(this._listener);
-    };
+        },
+        enumerable: true,
+        configurable: true
+    });
     return SegmentedBar;
-}(common.SegmentedBar));
+}(segmented_bar_common_1.SegmentedBarBase));
 exports.SegmentedBar = SegmentedBar;
-var TabHostClass;
-function ensureTabHostClass() {
-    if (TabHostClass) {
-        return;
-    }
-    var OurTabHost = (function (_super) {
-        __extends(OurTabHost, _super);
-        function OurTabHost(context, attrs) {
-            _super.call(this, context, attrs);
-            return global.__native(this);
-        }
-        OurTabHost.prototype.onAttachedToWindow = function () {
-        };
-        return OurTabHost;
-    }(android.widget.TabHost));
-    TabHostClass = OurTabHost;
-}
-var SegmentedBarStyler = (function () {
-    function SegmentedBarStyler() {
-    }
-    SegmentedBarStyler.setColorProperty = function (v, newValue) {
-        var tabHost = v._nativeView;
-        for (var tabIndex = 0; tabIndex < tabHost.getTabWidget().getTabCount(); tabIndex++) {
-            var tab = tabHost.getTabWidget().getChildTabViewAt(tabIndex);
-            var t = tab.getChildAt(1);
-            t.setTextColor(newValue);
-        }
-    };
-    SegmentedBarStyler.resetColorProperty = function (v, nativeValue) {
-        var tabHost = v._nativeView;
-        for (var tabIndex = 0; tabIndex < tabHost.getTabWidget().getTabCount(); tabIndex++) {
-            var tab = tabHost.getTabWidget().getChildTabViewAt(tabIndex);
-            var t = tab.getChildAt(1);
-            t.setTextColor(nativeValue);
-        }
-    };
-    SegmentedBarStyler.getColorProperty = function (v) {
-        var tabHost = v._nativeView;
-        var textView = new android.widget.TextView(tabHost.getContext());
-        return textView.getCurrentTextColor();
-    };
-    SegmentedBarStyler.setFontInternalProperty = function (v, newValue, nativeValue) {
-        var tabHost = v._nativeView;
-        var fontValue = newValue;
-        for (var tabIndex = 0; tabIndex < tabHost.getTabWidget().getTabCount(); tabIndex++) {
-            var tab = tabHost.getTabWidget().getChildTabViewAt(tabIndex);
-            var t = tab.getChildAt(1);
-            var typeface = fontValue.getAndroidTypeface();
-            if (typeface) {
-                t.setTypeface(typeface);
-            }
-            else {
-                t.setTypeface(nativeValue.typeface);
-            }
-            if (fontValue.fontSize) {
-                t.setTextSize(fontValue.fontSize);
-            }
-            else {
-                t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, nativeValue.size);
-            }
-        }
-    };
-    SegmentedBarStyler.resetFontInternalProperty = function (v, nativeValue) {
-        var tabHost = v._nativeView;
-        for (var tabIndex = 0; tabIndex < tabHost.getTabWidget().getTabCount(); tabIndex++) {
-            var tab = tabHost.getTabWidget().getChildTabViewAt(tabIndex);
-            var t = tab.getChildAt(1);
-            t.setTypeface(nativeValue.typeface);
-            t.setTextSize(nativeValue.size);
-        }
-    };
-    SegmentedBarStyler.getFontInternalProperty = function (v) {
-        var tabHost = v._nativeView;
-        var textView = new android.widget.TextView(tabHost.getContext());
-        return {
-            typeface: textView.getTypeface(),
-            size: textView.getTextSize()
-        };
-    };
-    SegmentedBarStyler.setSelectedBackgroundColorProperty = function (v, newValue) {
-        ensureSegmentedBarColorDrawableClass();
-        var tabHost = v._nativeView;
-        for (var tabIndex = 0; tabIndex < tabHost.getTabWidget().getTabCount(); tabIndex++) {
-            var vg = tabHost.getTabWidget().getChildTabViewAt(tabIndex);
-            var backgroundDrawable = vg.getBackground();
-            if (android.os.Build.VERSION.SDK_INT > 21 && backgroundDrawable && types.isFunction(backgroundDrawable.setColorFilter)) {
-                backgroundDrawable.setColorFilter(newValue, android.graphics.PorterDuff.Mode.SRC_IN);
-            }
-            else {
-                var stateDrawable = new android.graphics.drawable.StateListDrawable();
-                var arr = Array.create("int", 1);
-                arr[0] = R_ATTR_STATE_SELECTED;
-                var colorDrawable = new SegmentedBarColorDrawableClass(newValue);
-                stateDrawable.addState(arr, colorDrawable);
-                stateDrawable.setBounds(0, 15, vg.getRight(), vg.getBottom());
-                if (android.os.Build.VERSION.SDK_INT >= 16) {
-                    vg.setBackground(stateDrawable);
-                }
-                else {
-                    vg.setBackgroundDrawable(stateDrawable);
-                }
-            }
-        }
-    };
-    SegmentedBarStyler.resetSelectedBackgroundColorProperty = function (v, nativeValue) {
-        var tabHost = v._nativeView;
-        ensureSegmentedBarColorDrawableClass();
-        for (var tabIndex = 0; tabIndex < tabHost.getTabWidget().getTabCount(); tabIndex++) {
-            var vg = tabHost.getTabWidget().getChildTabViewAt(tabIndex);
-            if (android.os.Build.VERSION.SDK_INT >= 16) {
-                vg.setBackground(nativeValue[tabIndex]);
-            }
-            else {
-                vg.setBackgroundDrawable(nativeValue[tabIndex]);
-            }
-        }
-    };
-    SegmentedBarStyler.getSelectedBackgroundColorProperty = function (v) {
-        var tabHost = v._nativeView;
-        var result = [];
-        for (var tabIndex = 0; tabIndex < tabHost.getTabWidget().getTabCount(); tabIndex++) {
-            var background = tabHost.getTabWidget().getChildTabViewAt(tabIndex).getBackground();
-            result.push(background);
-        }
-        return result;
-    };
-    SegmentedBarStyler.registerHandlers = function () {
-        style.registerHandler(style.colorProperty, new style.StylePropertyChangedHandler(SegmentedBarStyler.setColorProperty, SegmentedBarStyler.resetColorProperty, SegmentedBarStyler.getColorProperty), "SegmentedBar");
-        style.registerHandler(style.fontInternalProperty, new style.StylePropertyChangedHandler(SegmentedBarStyler.setFontInternalProperty, SegmentedBarStyler.resetFontInternalProperty, SegmentedBarStyler.getFontInternalProperty), "SegmentedBar");
-        style.registerHandler(style.selectedBackgroundColorProperty, new style.StylePropertyChangedHandler(SegmentedBarStyler.setSelectedBackgroundColorProperty, SegmentedBarStyler.resetSelectedBackgroundColorProperty, SegmentedBarStyler.getSelectedBackgroundColorProperty), "SegmentedBar");
-    };
-    return SegmentedBarStyler;
-}());
-exports.SegmentedBarStyler = SegmentedBarStyler;
-SegmentedBarStyler.registerHandlers();
-//# sourceMappingURL=segmented-bar.js.map

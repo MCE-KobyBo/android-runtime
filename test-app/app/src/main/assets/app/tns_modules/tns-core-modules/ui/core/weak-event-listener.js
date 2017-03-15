@@ -1,4 +1,3 @@
-var types = require("utils/types");
 var handlersForEventName = new Map();
 var sourcesMap = new WeakMap();
 var TargetHandlerPair = (function () {
@@ -48,16 +47,16 @@ function getHandlerForEventName(eventName) {
     return handler;
 }
 function validateArgs(source, eventName, handler, target) {
-    if (types.isNullOrUndefined(source)) {
+    if (!source) {
         throw new Error("source is null or undefined");
     }
-    if (types.isNullOrUndefined(target)) {
+    if (!target) {
         throw new Error("target is null or undefined");
     }
-    if (!types.isString(eventName)) {
+    if (typeof eventName !== "string") {
         throw new Error("eventName is not a string");
     }
-    if (!types.isFunction(handler)) {
+    if (typeof handler !== "function") {
         throw new Error("handler is not a function");
     }
 }

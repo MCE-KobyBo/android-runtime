@@ -1,5 +1,7 @@
 if (global.TNS_WEBPACK) {
     require("globals");
+    // Register "dynamically" loaded module that need to be resolved by the
+    // XML/component builders.
     global.registerModule("text/formatted-string", function () { return require("text/formatted-string"); });
     global.registerModule("text/span", function () { return require("text/span"); });
     global.registerModule("ui/action-bar", function () { return require("ui/action-bar"); });
@@ -15,6 +17,7 @@ if (global.TNS_WEBPACK) {
     global.registerModule("ui/layouts/dock-layout", function () { return require("ui/layouts/dock-layout"); });
     global.registerModule("ui/layouts/grid-layout", function () { return require("ui/layouts/grid-layout"); });
     global.registerModule("ui/layouts/stack-layout", function () { return require("ui/layouts/stack-layout"); });
+    global.registerModule("ui/layouts/flexbox-layout", function () { return require("ui/layouts/flexbox-layout"); });
     global.registerModule("ui/list-picker", function () { return require("ui/list-picker"); });
     global.registerModule("ui/page", function () { return require("ui/page"); });
     global.registerModule("ui/placeholder", function () { return require("ui/placeholder"); });
@@ -33,4 +36,3 @@ if (global.TNS_WEBPACK) {
     global.registerModule("ui/time-picker", function () { return require("ui/time-picker"); });
     global.registerModule("ui/list-view", function () { return require("ui/list-view"); });
 }
-//# sourceMappingURL=bundle-entry-points.js.map

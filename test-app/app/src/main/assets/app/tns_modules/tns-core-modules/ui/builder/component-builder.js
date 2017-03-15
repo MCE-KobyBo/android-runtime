@@ -3,11 +3,7 @@ var page_1 = require("ui/page");
 var view_1 = require("ui/core/view");
 var file_system_1 = require("file-system");
 var binding_builder_1 = require("./binding-builder");
-var utils_1 = require("utils/utils");
-require("ui/layouts/dock-layout");
-require("ui/layouts/grid-layout");
-require("ui/layouts/absolute-layout");
-var special_properties_1 = require("ui/builder/special-properties");
+var file_name_resolver_1 = require("file-system/file-name-resolver");
 var UI_PATH = "ui/";
 var MODULES = {
     "TabViewItem": "ui/tab-view",
@@ -26,7 +22,7 @@ function ensurePlatform() {
         platform = require("platform");
     }
 }
-function getComponentModule(elementName, namespace, attributes, exports) {
+function getComponentModule(elementName, namespace, attributes, exports, moduleNamePath) {
     var instance;
     var instanceModule;
     var componentModule;
@@ -35,7 +31,7 @@ function getComponentModule(elementName, namespace, attributes, exports) {
         (elementName.toLowerCase().indexOf("layout") !== -1 ? "layouts/" : "") +
         elementName.split(/(?=[A-Z])/).join("-").toLowerCase();
     try {
-        if (types_1.isString(namespace)) {
+        if (typeof namespace === "string") {
             if (global.moduleExists(namespace)) {
                 moduleId = namespace;
             }
@@ -60,6 +56,7 @@ function getComponentModule(elementName, namespace, attributes, exports) {
         var debug = require("utils/debug");
         throw new debug.ScopeError(ex, "Module '" + moduleId + "' not found for element '" + (namespace ? namespace + ":" : "") + elementName + "'.");
     }
+    var cssApplied = false;
     if (attributes) {
         if (attributes[IMPORT]) {
             var importPath = attributes[IMPORT].trim();
@@ -69,8 +66,8 @@ function getComponentModule(elementName, namespace, attributes, exports) {
             exports = global.loadModule(importPath);
             instance.exports = exports;
         }
-        if (attributes[CODEFILE]) {
-            if (instance instanceof page_1.Page) {
+        if (instance instanceof page_1.Page) {
+            if (attributes[CODEFILE]) {
                 var codeFilePath = attributes[CODEFILE].trim();
                 if (codeFilePath.indexOf("~/") === 0) {
                     codeFilePath = file_system_1.path.join(file_system_1.knownFolders.currentApp().path, codeFilePath.replace("~/", ""));
@@ -84,27 +81,31 @@ function getComponentModule(elementName, namespace, attributes, exports) {
                     throw new Error("Code file with path \"" + codeFilePathWithExt + "\" cannot be found!");
                 }
             }
-            else {
-                throw new Error("Code file atribute is valid only for pages!");
-            }
-        }
-        if (attributes[CSSFILE]) {
-            if (instance instanceof page_1.Page) {
+            if (attributes[CSSFILE]) {
                 var cssFilePath = attributes[CSSFILE].trim();
                 if (cssFilePath.indexOf("~/") === 0) {
                     cssFilePath = file_system_1.path.join(file_system_1.knownFolders.currentApp().path, cssFilePath.replace("~/", ""));
                 }
                 if (file_system_1.File.exists(cssFilePath)) {
                     instance.addCssFile(cssFilePath);
-                    instance[CSSFILE] = true;
+                    cssApplied = true;
                 }
                 else {
                     throw new Error("Css file with path \"" + cssFilePath + "\" cannot be found!");
                 }
             }
-            else {
-                throw new Error("Css file atribute is valid only for pages!");
+        }
+    }
+    if (instance instanceof page_1.Page) {
+        if (moduleNamePath && !cssApplied) {
+            var cssFilePath = file_name_resolver_1.resolveFileName(moduleNamePath, "css");
+            if (cssFilePath) {
+                instance.addCssFile(cssFilePath);
+                cssApplied = true;
             }
+        }
+        if (!cssApplied) {
+            instance._refreshCss();
         }
     }
     if (instance && instanceModule) {
@@ -124,8 +125,7 @@ function getComponentModule(elementName, namespace, attributes, exports) {
                 var subObj = instance;
                 var properties = attr.split(".");
                 var subPropName = properties[properties.length - 1];
-                var i;
-                for (i = 0; i < properties.length - 1; i++) {
+                for (var i = 0; i < properties.length - 1; i++) {
                     if (types_1.isDefined(subObj)) {
                         subObj = subObj[properties[i]];
                     }
@@ -164,16 +164,11 @@ function setPropertyValue(instance, instanceModule, exports, propertyName, prope
     }
     else {
         var attrHandled = false;
-        var specialSetter = special_properties_1.getSpecialPropertySetter(propertyName);
-        if (!attrHandled && specialSetter) {
-            specialSetter(instance, propertyValue);
-            attrHandled = true;
-        }
         if (!attrHandled && instance._applyXmlAttribute) {
             attrHandled = instance._applyXmlAttribute(propertyName, propertyValue);
         }
         if (!attrHandled) {
-            instance[propertyName] = utils_1.convertString(propertyValue);
+            instance[propertyName] = propertyValue;
         }
     }
 }

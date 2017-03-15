@@ -1,8 +1,14 @@
-var transition = require("ui/transition");
-var platform = require("platform");
-var lazy_1 = require("utils/lazy");
-var screenWidth = lazy_1.default(function () { return platform.screen.mainScreen.widthPixels; });
-var screenHeight = lazy_1.default(function () { return platform.screen.mainScreen.heightPixels; });
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var transition = require("./transition");
+var platform = require("../../platform");
+var lazy_1 = require("../../utils/lazy");
+var screenWidth = lazy_1["default"](function () { return platform.screen.mainScreen.widthPixels; });
+var screenHeight = lazy_1["default"](function () { return platform.screen.mainScreen.heightPixels; });
 var SlideTransition = (function (_super) {
     __extends(SlideTransition, _super);
     function SlideTransition(direction, duration, curve) {
@@ -114,4 +120,3 @@ var SlideTransition = (function (_super) {
     return SlideTransition;
 }(transition.Transition));
 exports.SlideTransition = SlideTransition;
-//# sourceMappingURL=slide-transition.js.map

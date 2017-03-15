@@ -1,29 +1,29 @@
-var platform = require("platform");
-var layout_base_1 = require("ui/layouts/layout-base");
-var enums_1 = require("ui/enums");
-var proxy_1 = require("ui/core/proxy");
-var dependency_observable_1 = require("ui/core/dependency-observable");
-var AffectsLayout = platform.device.os === platform.platformNames.android ? dependency_observable_1.PropertyMetadataSettings.None : dependency_observable_1.PropertyMetadataSettings.AffectsLayout;
-function validateOrientation(value) {
-    return value === enums_1.Orientation.vertical || value === enums_1.Orientation.horizontal;
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-var StackLayout = (function (_super) {
-    __extends(StackLayout, _super);
-    function StackLayout() {
+var layout_base_1 = require("../layout-base");
+__export(require("../layout-base"));
+var StackLayoutBase = (function (_super) {
+    __extends(StackLayoutBase, _super);
+    function StackLayoutBase() {
         _super.apply(this, arguments);
     }
-    Object.defineProperty(StackLayout.prototype, "orientation", {
-        get: function () {
-            return this._getValue(StackLayout.orientationProperty);
-        },
-        set: function (value) {
-            this._setValue(StackLayout.orientationProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    StackLayout.orientationProperty = new dependency_observable_1.Property("orientation", "StackLayout", new proxy_1.PropertyMetadata(enums_1.Orientation.vertical, AffectsLayout, undefined, validateOrientation));
-    return StackLayout;
+    return StackLayoutBase;
 }(layout_base_1.LayoutBase));
-exports.StackLayout = StackLayout;
-//# sourceMappingURL=stack-layout-common.js.map
+exports.StackLayoutBase = StackLayoutBase;
+exports.orientationProperty = new layout_base_1.Property({
+    name: "orientation", defaultValue: "vertical", affectsLayout: layout_base_1.isIOS,
+    valueConverter: function (v) {
+        if (v === "horizontal" || v === "vertical") {
+            return v;
+        }
+        throw new Error("Invalid orientation value: " + v);
+    }
+});
+exports.orientationProperty.register(StackLayoutBase);

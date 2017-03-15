@@ -1,42 +1,74 @@
-var utils = require("utils/utils");
-var common = require("./grid-layout-common");
-var view_1 = require("ui/core/view");
-global.moduleMerge(common, exports);
-function setNativeProperty(data, setter) {
-    var view = data.object;
-    if (view instanceof view_1.View) {
-        var nativeView = view._nativeView;
-        var lp = nativeView.getLayoutParams() || new org.nativescript.widgets.CommonLayoutParams();
-        if (lp instanceof org.nativescript.widgets.CommonLayoutParams) {
-            setter(lp);
-            nativeView.setLayoutParams(lp);
-        }
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var grid_layout_common_1 = require("./grid-layout-common");
+__export(require("./grid-layout-common"));
+function setNativeProperty(view, setter) {
+    var nativeView = view._nativeView;
+    var lp = nativeView.getLayoutParams() || new org.nativescript.widgets.CommonLayoutParams();
+    if (lp instanceof org.nativescript.widgets.CommonLayoutParams) {
+        setter(lp);
+        nativeView.setLayoutParams(lp);
     }
 }
-function setNativeRowProperty(data) {
-    setNativeProperty(data, function (lp) { lp.row = data.newValue; });
-}
-function setNativeRowSpanProperty(data) {
-    setNativeProperty(data, function (lp) { lp.rowSpan = data.newValue; });
-}
-function setNativeColumnProperty(data) {
-    setNativeProperty(data, function (lp) { lp.column = data.newValue; });
-}
-function setNativeColumnSpanProperty(data) {
-    setNativeProperty(data, function (lp) { lp.columnSpan = data.newValue; });
-}
-common.GridLayout.rowProperty.metadata.onSetNativeValue = setNativeRowProperty;
-common.GridLayout.rowSpanProperty.metadata.onSetNativeValue = setNativeRowSpanProperty;
-common.GridLayout.columnProperty.metadata.onSetNativeValue = setNativeColumnProperty;
-common.GridLayout.columnSpanProperty.metadata.onSetNativeValue = setNativeColumnSpanProperty;
+// define native getter and setter for rowProperty.
+var rowDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get: function () { return 0; },
+    set: function (value) {
+        setNativeProperty(this, function (lp) { return lp.row = value; });
+    }
+};
+// define native getter and setter for columnProperty.
+var colDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get: function () { return 0; },
+    set: function (value) {
+        setNativeProperty(this, function (lp) { return lp.column = value; });
+    }
+};
+// define native getter and setter for rowSpanProperty.
+var rowSpanDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get: function () { return 1; },
+    set: function (value) {
+        setNativeProperty(this, function (lp) { return lp.rowSpan = value; });
+    }
+};
+// define native getter and setter for columnSpanProperty.
+var colSpanDescriptor = {
+    enumerable: true,
+    configurable: true,
+    get: function () { return 1; },
+    set: function (value) {
+        setNativeProperty(this, function (lp) { return lp.columnSpan = value; });
+    }
+};
+// register native properties on View type.
+Object.defineProperties(grid_layout_common_1.View.prototype, (_a = {},
+    _a[grid_layout_common_1.rowProperty.native] = rowDescriptor,
+    _a[grid_layout_common_1.columnProperty.native] = colDescriptor,
+    _a[grid_layout_common_1.rowSpanProperty.native] = rowSpanDescriptor,
+    _a[grid_layout_common_1.columnSpanProperty.native] = colSpanDescriptor,
+    _a
+));
 function createNativeSpec(itemSpec) {
     switch (itemSpec.gridUnitType) {
-        case common.GridUnitType.auto:
+        case grid_layout_common_1.GridUnitType.AUTO:
             return new org.nativescript.widgets.ItemSpec(itemSpec.value, org.nativescript.widgets.GridUnitType.auto);
-        case common.GridUnitType.star:
+        case grid_layout_common_1.GridUnitType.STAR:
             return new org.nativescript.widgets.ItemSpec(itemSpec.value, org.nativescript.widgets.GridUnitType.star);
-        case common.GridUnitType.pixel:
-            return new org.nativescript.widgets.ItemSpec(itemSpec.value * utils.layout.getDisplayDensity(), org.nativescript.widgets.GridUnitType.pixel);
+        case grid_layout_common_1.GridUnitType.PIXEL:
+            return new org.nativescript.widgets.ItemSpec(itemSpec.value * grid_layout_common_1.layout.getDisplayDensity(), org.nativescript.widgets.GridUnitType.pixel);
         default:
             throw new Error("Invalid gridUnitType: " + itemSpec.gridUnitType);
     }
@@ -49,7 +81,7 @@ var ItemSpec = (function (_super) {
     Object.defineProperty(ItemSpec.prototype, "actualLength", {
         get: function () {
             if (this.nativeSpec) {
-                return Math.round(this.nativeSpec.getActualLength() / utils.layout.getDisplayDensity());
+                return Math.round(this.nativeSpec.getActualLength() / grid_layout_common_1.layout.getDisplayDensity());
             }
             return 0;
         },
@@ -57,7 +89,7 @@ var ItemSpec = (function (_super) {
         configurable: true
     });
     return ItemSpec;
-}(common.ItemSpec));
+}(grid_layout_common_1.ItemSpec));
 exports.ItemSpec = ItemSpec;
 var GridLayout = (function (_super) {
     __extends(GridLayout, _super);
@@ -78,11 +110,13 @@ var GridLayout = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    GridLayout.prototype._createUI = function () {
+    GridLayout.prototype._createNativeView = function () {
         var _this = this;
-        this._layout = new org.nativescript.widgets.GridLayout(this._context);
+        var layout = this._layout = new org.nativescript.widgets.GridLayout(this._context);
+        // Update native GridLayout
         this.getRows().forEach(function (itemSpec, index, rows) { _this._onRowAdded(itemSpec); }, this);
         this.getColumns().forEach(function (itemSpec, index, rows) { _this._onColumnAdded(itemSpec); }, this);
+        return layout;
     };
     GridLayout.prototype._onRowAdded = function (itemSpec) {
         if (this._layout) {
@@ -111,8 +145,9 @@ var GridLayout = (function (_super) {
         }
     };
     GridLayout.prototype.invalidate = function () {
+        // No need to request layout for android because it will be done in the native call.
     };
     return GridLayout;
-}(common.GridLayout));
+}(grid_layout_common_1.GridLayoutBase));
 exports.GridLayout = GridLayout;
-//# sourceMappingURL=grid-layout.js.map
+var _a;

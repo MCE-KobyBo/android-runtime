@@ -1,18 +1,13 @@
-var utils = require("utils/utils");
-var common = require("./background-common");
-var types = require("utils/types");
-var cssValue = require("css-value");
-var button;
-var style;
-function ensureLazyRequires() {
-    if (!button) {
-        button = require("ui/button");
-    }
-    if (!style) {
-        style = require("./style");
-    }
+"use strict";
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-global.moduleMerge(common, exports);
+var types_1 = require("../../utils/types");
+var utils_1 = require("../../utils/utils");
+var css_value_1 = require("../../css-value");
+__export(require("./background-common"));
+// TODO: Change this implementation to use 
+// We are using "ad" here to avoid namespace collision with the global android object
 var ad;
 (function (ad) {
     var SDK;
@@ -26,89 +21,76 @@ var ad;
     function isSetColorFilterOnlyWidget(nativeView) {
         return (nativeView instanceof android.widget.Button ||
             (nativeView instanceof android.support.v7.widget.Toolbar
-                && getSDK() >= 21));
+                && getSDK() >= 21 // There is an issue with the DrawableContainer which was fixed for API version 21 and above: https://code.google.com/p/android/issues/detail?id=60183
+            ));
     }
-    function onBackgroundOrBorderPropertyChanged(v) {
-        var nativeView = v._nativeView;
+    function onBackgroundOrBorderPropertyChanged(view) {
+        var nativeView = view._nativeView;
         if (!nativeView) {
             return;
         }
-        ensureLazyRequires();
-        var background = v.style._getValue(style.backgroundInternalProperty);
+        var background = view.style.backgroundInternal;
         var backgroundDrawable = nativeView.getBackground();
-        var density = utils.layout.getDisplayDensity();
-        var cache = v._nativeView;
+        var cache = view._nativeView;
+        var viewClass = types_1.getClass(view);
+        // always cache the default background constant state.
+        if (!_defaultBackgrounds.has(viewClass) && !types_1.isNullOrUndefined(backgroundDrawable)) {
+            _defaultBackgrounds.set(viewClass, backgroundDrawable.getConstantState());
+        }
         if (isSetColorFilterOnlyWidget(nativeView)
-            && !types.isNullOrUndefined(backgroundDrawable)
-            && types.isFunction(backgroundDrawable.setColorFilter)
+            && !types_1.isNullOrUndefined(backgroundDrawable)
+            && types_1.isFunction(backgroundDrawable.setColorFilter)
             && !background.hasBorderWidth()
             && !background.hasBorderRadius()
             && !background.clipPath
-            && types.isNullOrUndefined(background.image)
-            && !types.isNullOrUndefined(background.color)) {
+            && types_1.isNullOrUndefined(background.image)
+            && !types_1.isNullOrUndefined(background.color)) {
             var backgroundColor = backgroundDrawable.backgroundColor = background.color.android;
+            backgroundDrawable.mutate();
             backgroundDrawable.setColorFilter(backgroundColor, android.graphics.PorterDuff.Mode.SRC_IN);
+            backgroundDrawable.invalidateSelf(); // Make sure the drawable is invalidated. Android forgets to invalidate it in some cases: toolbar
             backgroundDrawable.backgroundColor = backgroundColor;
         }
         else if (!background.isEmpty()) {
             if (!(backgroundDrawable instanceof org.nativescript.widgets.BorderDrawable)) {
-                var viewClass = types.getClass(v);
-                if (!isSetColorFilterOnlyWidget(nativeView) && !_defaultBackgrounds.has(viewClass)) {
-                    _defaultBackgrounds.set(viewClass, nativeView.getBackground());
-                }
-                backgroundDrawable = new org.nativescript.widgets.BorderDrawable(density, v.toString());
-                refreshBorderDrawable(v, backgroundDrawable);
-                if (getSDK() >= 16) {
-                    nativeView.setBackground(backgroundDrawable);
-                }
-                else {
-                    nativeView.setBackgroundDrawable(backgroundDrawable);
-                }
+                backgroundDrawable = new org.nativescript.widgets.BorderDrawable(utils_1.layout.getDisplayDensity(), view.toString());
+                refreshBorderDrawable(view, backgroundDrawable);
+                org.nativescript.widgets.ViewHelper.setBackground(nativeView, backgroundDrawable);
             }
             else {
-                refreshBorderDrawable(v, backgroundDrawable);
+                refreshBorderDrawable(view, backgroundDrawable);
             }
+            // This should be done only when backgroundImage is set!!!
             if ((background.hasBorderWidth() || background.hasBorderRadius() || background.clipPath) && getSDK() < 18) {
-                cache.layerType = cache.getLayerType();
-                cache.setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null);
+                // Switch to software because of unsupported canvas methods if hardware acceleration is on:
+                // http://developer.android.com/guide/topics/graphics/hardware-accel.html
+                if (cache.layerType === undefined) {
+                    cache.layerType = cache.getLayerType();
+                    cache.setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null);
+                }
             }
         }
         else {
-            if (v instanceof button.Button) {
-                var nativeButton = new android.widget.Button(nativeView.getContext());
-                if (getSDK() >= 16) {
-                    nativeView.setBackground(nativeButton.getBackground());
-                }
-                else {
-                    nativeView.setBackgroundDrawable(nativeButton.getBackground());
-                }
-            }
-            else {
-                var viewClass = types.getClass(v);
-                if (_defaultBackgrounds.has(viewClass)) {
-                    if (getSDK() >= 16) {
-                        nativeView.setBackground(_defaultBackgrounds.get(viewClass));
-                    }
-                    else {
-                        nativeView.setBackgroundDrawable(_defaultBackgrounds.get(viewClass));
-                    }
-                }
+            if (_defaultBackgrounds.has(viewClass)) {
+                org.nativescript.widgets.ViewHelper.setBackground(nativeView, _defaultBackgrounds.get(viewClass).newDrawable());
             }
             if (cache.layerType !== undefined) {
                 cache.setLayerType(cache.layerType, null);
                 cache.layerType = undefined;
             }
         }
-        var leftPadding = Math.round(((background.borderLeftWidth || 0) + (v.style.paddingLeft || 0)) * density);
-        var topPadding = Math.round(((background.borderTopWidth || 0) + (v.style.paddingTop || 0)) * density);
-        var rightPadding = Math.round(((background.borderRightWidth || 0) + (v.style.paddingRight || 0)) * density);
-        var bottomPadding = Math.round(((background.borderBottomWidth || 0) + (v.style.paddingBottom || 0)) * density);
+        // TODO: Can we move BorderWidths as separate native setter?
+        // This way we could skip setPadding if borderWidth is not changed.
+        var leftPadding = Math.round(view.effectiveBorderLeftWidth + view.effectivePaddingLeft);
+        var topPadding = Math.round(view.effectiveBorderTopWidth + view.effectivePaddingTop);
+        var rightPadding = Math.round(view.effectiveBorderRightWidth + view.effectivePaddingRight);
+        var bottomPadding = Math.round(view.effectiveBorderBottomWidth + view.effectivePaddingBottom);
         nativeView.setPadding(leftPadding, topPadding, rightPadding, bottomPadding);
     }
     ad.onBackgroundOrBorderPropertyChanged = onBackgroundOrBorderPropertyChanged;
 })(ad = exports.ad || (exports.ad = {}));
 function refreshBorderDrawable(view, borderDrawable) {
-    var background = view.style._getValue(style.backgroundInternalProperty);
+    var background = view.style.backgroundInternal;
     if (background) {
         var backgroundPositionParsedCSSValues = null;
         var backgroundSizeParsedCSSValues = null;
@@ -118,18 +100,18 @@ function refreshBorderDrawable(view, borderDrawable) {
         if (background.size) {
             backgroundSizeParsedCSSValues = createNativeCSSValueArray(background.size);
         }
-        borderDrawable.refresh((!types.isNullOrUndefined(background.borderTopColor) && !types.isNullOrUndefined(background.borderTopColor.android)) ? background.borderTopColor.android : android.graphics.Color.BLACK, (!types.isNullOrUndefined(background.borderRightColor) && !types.isNullOrUndefined(background.borderRightColor.android)) ? background.borderRightColor.android : android.graphics.Color.BLACK, (!types.isNullOrUndefined(background.borderBottomColor) && !types.isNullOrUndefined(background.borderBottomColor.android)) ? background.borderBottomColor.android : android.graphics.Color.BLACK, (!types.isNullOrUndefined(background.borderLeftColor) && !types.isNullOrUndefined(background.borderLeftColor.android)) ? background.borderLeftColor.android : android.graphics.Color.BLACK, background.borderTopWidth, background.borderRightWidth, background.borderBottomWidth, background.borderLeftWidth, background.borderTopLeftRadius, background.borderTopRightRadius, background.borderBottomRightRadius, background.borderBottomLeftRadius, background.clipPath, (background.color && background.color.android) ? background.color.android : 0, (background.image && background.image.android) ? background.image.android : null, background.repeat, background.position, backgroundPositionParsedCSSValues, background.size, backgroundSizeParsedCSSValues);
+        var blackColor = android.graphics.Color.BLACK;
+        borderDrawable.refresh((background.borderTopColor && background.borderTopColor.android !== undefined) ? background.borderTopColor.android : blackColor, (background.borderRightColor && background.borderRightColor.android !== undefined) ? background.borderRightColor.android : blackColor, (background.borderBottomColor && background.borderBottomColor.android !== undefined) ? background.borderBottomColor.android : blackColor, (background.borderLeftColor && background.borderLeftColor.android !== undefined) ? background.borderLeftColor.android : blackColor, background.borderTopWidth, background.borderRightWidth, background.borderBottomWidth, background.borderLeftWidth, background.borderTopLeftRadius, background.borderTopRightRadius, background.borderBottomRightRadius, background.borderBottomLeftRadius, background.clipPath, (background.color && background.color.android) ? background.color.android : 0, (background.image && background.image.android) ? background.image.android : null, background.repeat, background.position, backgroundPositionParsedCSSValues, background.size, backgroundSizeParsedCSSValues);
     }
 }
 function createNativeCSSValueArray(css) {
     if (!css) {
         return null;
     }
-    var cssValues = cssValue(css);
+    var cssValues = css_value_1.parse(css);
     var nativeArray = Array.create(org.nativescript.widgets.CSSValue, cssValues.length);
-    for (var i = 0, length = cssValues.length; i < length; i++) {
+    for (var i = 0, length_1 = cssValues.length; i < length_1; i++) {
         nativeArray[i] = new org.nativescript.widgets.CSSValue(cssValues[i].type, cssValues[i].string, cssValues[i].unit, cssValues[i].value);
     }
     return nativeArray;
 }
-//# sourceMappingURL=background.js.map

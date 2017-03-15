@@ -1,68 +1,93 @@
-var aiCommon = require("./activity-indicator-common");
-var enums = require("ui/enums");
-var style = require("ui/styling/style");
-function onBusyPropertyChanged(data) {
-    var indicator = data.object;
-    if (!indicator.android) {
-        return;
-    }
-    if (indicator.visibility === enums.Visibility.visible) {
-        indicator.android.setVisibility(data.newValue ? android.view.View.VISIBLE : android.view.View.INVISIBLE);
-    }
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-aiCommon.ActivityIndicator.busyProperty.metadata.onSetNativeValue = onBusyPropertyChanged;
-global.moduleMerge(aiCommon, exports);
+var activity_indicator_common_1 = require("./activity-indicator-common");
+__export(require("./activity-indicator-common"));
 var ActivityIndicator = (function (_super) {
     __extends(ActivityIndicator, _super);
     function ActivityIndicator() {
         _super.apply(this, arguments);
     }
-    ActivityIndicator.prototype._createUI = function () {
-        this._android = new android.widget.ProgressBar(this._context);
-        this._android.setVisibility(android.view.View.INVISIBLE);
-        this._android.setIndeterminate(true);
+    ActivityIndicator.prototype._createNativeView = function () {
+        var progressBar = this._progressBar = new android.widget.ProgressBar(this._context);
+        this._progressBar.setVisibility(android.view.View.INVISIBLE);
+        this._progressBar.setIndeterminate(true);
+        return progressBar;
     };
     Object.defineProperty(ActivityIndicator.prototype, "android", {
         get: function () {
-            return this._android;
+            return this._progressBar;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ActivityIndicator.prototype, activity_indicator_common_1.busyProperty.native, {
+        get: function () {
+            return false;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ActivityIndicator.prototype, activity_indicator_common_1.busyProperty.native, {
+        set: function (value) {
+            if (this.visibility === activity_indicator_common_1.Visibility.VISIBLE) {
+                this._progressBar.setVisibility(value ? android.view.View.VISIBLE : android.view.View.INVISIBLE);
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ActivityIndicator.prototype, activity_indicator_common_1.visibilityProperty.native, {
+        get: function () {
+            return activity_indicator_common_1.Visibility.HIDDEN;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ActivityIndicator.prototype, activity_indicator_common_1.visibilityProperty.native, {
+        set: function (value) {
+            switch (value) {
+                case activity_indicator_common_1.Visibility.VISIBLE:
+                    this._progressBar.setVisibility(this.busy ? android.view.View.VISIBLE : android.view.View.INVISIBLE);
+                    break;
+                case activity_indicator_common_1.Visibility.HIDDEN:
+                    this._progressBar.setVisibility(android.view.View.INVISIBLE);
+                    break;
+                case activity_indicator_common_1.Visibility.COLLAPSE:
+                    this._progressBar.setVisibility(android.view.View.GONE);
+                    break;
+                default:
+                    throw new Error("Invalid visibility value: " + value + ". Valid values are: \"" + activity_indicator_common_1.Visibility.VISIBLE + "\", \"" + activity_indicator_common_1.Visibility.HIDDEN + "\", \"" + activity_indicator_common_1.Visibility.COLLAPSE + "\".");
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ActivityIndicator.prototype, activity_indicator_common_1.colorProperty.native, {
+        get: function () {
+            return -1;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(ActivityIndicator.prototype, activity_indicator_common_1.colorProperty.native, {
+        set: function (value) {
+            if (value instanceof activity_indicator_common_1.Color) {
+                this._progressBar.getIndeterminateDrawable().setColorFilter(value.android, android.graphics.PorterDuff.Mode.SRC_IN);
+            }
+            else {
+                this._progressBar.getIndeterminateDrawable().clearColorFilter();
+            }
         },
         enumerable: true,
         configurable: true
     });
     return ActivityIndicator;
-}(aiCommon.ActivityIndicator));
+}(activity_indicator_common_1.ActivityIndicatorBase));
 exports.ActivityIndicator = ActivityIndicator;
-var ActivityIndicatorStyler = (function () {
-    function ActivityIndicatorStyler() {
-    }
-    ActivityIndicatorStyler.setColorProperty = function (view, newValue) {
-        var bar = view._nativeView;
-        bar.getIndeterminateDrawable().setColorFilter(newValue, android.graphics.PorterDuff.Mode.SRC_IN);
-    };
-    ActivityIndicatorStyler.resetColorProperty = function (view, nativeValue) {
-        var bar = view._nativeView;
-        bar.getIndeterminateDrawable().clearColorFilter();
-    };
-    ActivityIndicatorStyler.setActivityIndicatorVisibilityProperty = function (view, newValue) {
-        ActivityIndicatorStyler.setIndicatorVisibility(view.busy, newValue, view._nativeView);
-    };
-    ActivityIndicatorStyler.resetActivityIndicatorVisibilityProperty = function (view, nativeValue) {
-        ActivityIndicatorStyler.setIndicatorVisibility(view.busy, enums.Visibility.visible, view._nativeView);
-    };
-    ActivityIndicatorStyler.setIndicatorVisibility = function (isBusy, visibility, nativeView) {
-        if (visibility === enums.Visibility.collapsed || visibility === enums.Visibility.collapse) {
-            nativeView.setVisibility(android.view.View.GONE);
-        }
-        else {
-            nativeView.setVisibility(isBusy ? android.view.View.VISIBLE : android.view.View.INVISIBLE);
-        }
-    };
-    ActivityIndicatorStyler.registerHandlers = function () {
-        style.registerHandler(style.colorProperty, new style.StylePropertyChangedHandler(ActivityIndicatorStyler.setColorProperty, ActivityIndicatorStyler.resetColorProperty), "ActivityIndicator");
-        style.registerHandler(style.visibilityProperty, new style.StylePropertyChangedHandler(ActivityIndicatorStyler.setActivityIndicatorVisibilityProperty, ActivityIndicatorStyler.resetActivityIndicatorVisibilityProperty), "ActivityIndicator");
-    };
-    return ActivityIndicatorStyler;
-}());
-exports.ActivityIndicatorStyler = ActivityIndicatorStyler;
-ActivityIndicatorStyler.registerHandlers();
-//# sourceMappingURL=activity-indicator.js.map

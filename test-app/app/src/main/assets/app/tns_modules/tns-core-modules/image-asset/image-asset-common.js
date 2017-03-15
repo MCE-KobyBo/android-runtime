@@ -1,5 +1,11 @@
-var observable = require("data/observable");
-var platform = require("platform");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var observable = require("../data/observable");
+var platform = require("../platform");
 var ImageAsset = (function (_super) {
     __extends(ImageAsset, _super);
     function ImageAsset() {
@@ -46,6 +52,7 @@ var ImageAsset = (function (_super) {
         configurable: true
     });
     ImageAsset.prototype.getImageAsync = function (callback) {
+        //
     };
     return ImageAsset;
 }(observable.Observable));
@@ -80,4 +87,3 @@ function getRequestedImageSize(src, options) {
     };
 }
 exports.getRequestedImageSize = getRequestedImageSize;
-//# sourceMappingURL=image-asset-common.js.map

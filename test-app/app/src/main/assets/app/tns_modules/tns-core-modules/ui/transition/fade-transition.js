@@ -1,4 +1,10 @@
-var transition_1 = require("ui/transition");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var transition_1 = require("./transition");
 var FadeTransition = (function (_super) {
     __extends(FadeTransition, _super);
     function FadeTransition() {
@@ -29,4 +35,3 @@ var FadeTransition = (function (_super) {
     return FadeTransition;
 }(transition_1.Transition));
 exports.FadeTransition = FadeTransition;
-//# sourceMappingURL=fade-transition.js.map

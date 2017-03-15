@@ -1,3 +1,5 @@
+"use strict";
+/// <reference path="./css-selector-parser.d.ts" />
 function isUniversal(sel) {
     return sel.type === "*";
 }
@@ -23,6 +25,7 @@ function isAttribute(sel) {
 }
 exports.isAttribute = isAttribute;
 var regex = /(\s*)(?:(\*)|(#|\.|:|\b)([_-\w][_-\w\d]*)|\[\s*([_-\w][_-\w\d]*)\s*(?:(=|\^=|\$=|\*=|\~=|\|=)\s*(?:([_-\w][_-\w\d]*)|"((?:[^\\"]|\\(?:"|n|r|f|\\|0-9a-f))*)"|'((?:[^\\']|\\(?:'|n|r|f|\\|0-9a-f))*)')\s*)?\])(?:\s*(\+|~|>|\s))?/g;
+// no lead ws     univ   type pref and ident          [    prop                   =                            ident    -or-    "string escapes \" \00aaff"    -or-   'string    escapes \' urf-8: \00aaff'       ]        combinator
 function parse(selector) {
     var selectors = [];
     var result;
@@ -53,6 +56,7 @@ function parse(selector) {
             case "[]":
                 var prop = getProperty(result);
                 var test = getPropertyTest(result);
+                // TODO: Unescape escape sequences. Unescape UTF-8 characters.
                 var value = getPropertyValue(result);
                 selector_1 = test ? { pos: pos, type: type, prop: prop, test: test, value: value } : { pos: pos, type: type, prop: prop };
                 break;
@@ -92,4 +96,3 @@ function getPropertyValue(result) {
 function getCombinator(result) {
     return result[result.length - 1] || undefined;
 }
-//# sourceMappingURL=css-selector-parser.js.map

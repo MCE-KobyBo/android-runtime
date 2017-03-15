@@ -1,5 +1,14 @@
-var view = require("ui/core/view");
-var utils = require("utils/utils");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var view_1 = require("../core/view");
+__export(require("../core/view"));
 var ContentView = (function (_super) {
     __extends(ContentView, _super);
     function ContentView() {
@@ -54,36 +63,36 @@ var ContentView = (function (_super) {
         configurable: true
     });
     ContentView.prototype._onContentChanged = function (oldView, newView) {
+        //
     };
     ContentView.prototype._addChildFromBuilder = function (name, value) {
-        if (value instanceof view.View) {
+        if (value instanceof view_1.View) {
             this.content = value;
         }
     };
-    ContentView.prototype._eachChildView = function (callback) {
-        if (this._content) {
-            callback(this._content);
+    ContentView.prototype.eachChildView = function (callback) {
+        var content = this._content;
+        if (content) {
+            callback(content);
         }
     };
+    // This method won't be called in Android because we use the native android layout.
     ContentView.prototype.onMeasure = function (widthMeasureSpec, heightMeasureSpec) {
-        view.View.adjustChildLayoutParams(this.layoutView, widthMeasureSpec, heightMeasureSpec);
-        var result = view.View.measureChild(this, this.layoutView, widthMeasureSpec, heightMeasureSpec);
-        var width = utils.layout.getMeasureSpecSize(widthMeasureSpec);
-        var widthMode = utils.layout.getMeasureSpecMode(widthMeasureSpec);
-        var height = utils.layout.getMeasureSpecSize(heightMeasureSpec);
-        var heightMode = utils.layout.getMeasureSpecMode(heightMeasureSpec);
-        var density = utils.layout.getDisplayDensity();
-        var measureWidth = Math.max(result.measuredWidth, this.minWidth * density);
-        var measureHeight = Math.max(result.measuredHeight, this.minHeight * density);
-        var widthAndState = view.View.resolveSizeAndState(measureWidth, width, widthMode, 0);
-        var heightAndState = view.View.resolveSizeAndState(measureHeight, height, heightMode, 0);
+        var result = view_1.View.measureChild(this, this.layoutView, widthMeasureSpec, heightMeasureSpec);
+        var width = view_1.layout.getMeasureSpecSize(widthMeasureSpec);
+        var widthMode = view_1.layout.getMeasureSpecMode(widthMeasureSpec);
+        var height = view_1.layout.getMeasureSpecSize(heightMeasureSpec);
+        var heightMode = view_1.layout.getMeasureSpecMode(heightMeasureSpec);
+        var measureWidth = Math.max(result.measuredWidth, this.effectiveMinWidth);
+        var measureHeight = Math.max(result.measuredHeight, this.effectiveMinHeight);
+        var widthAndState = view_1.View.resolveSizeAndState(measureWidth, width, widthMode, 0);
+        var heightAndState = view_1.View.resolveSizeAndState(measureHeight, height, heightMode, 0);
         this.setMeasuredDimension(widthAndState, heightAndState);
     };
+    // This method won't be called in Android because we use the native android layout.
     ContentView.prototype.onLayout = function (left, top, right, bottom) {
-        view.View.layoutChild(this, this.layoutView, 0, 0, right - left, bottom - top);
-        view.View.restoreChildOriginalParams(this.layoutView);
+        view_1.View.layoutChild(this, this.layoutView, 0, 0, right - left, bottom - top);
     };
     return ContentView;
-}(view.CustomLayoutView));
+}(view_1.CustomLayoutView));
 exports.ContentView = ContentView;
-//# sourceMappingURL=content-view.js.map

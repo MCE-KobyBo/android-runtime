@@ -1,14 +1,43 @@
-var common = require("./switch-common");
-var style = require("ui/styling/style");
-function onCheckedPropertyChanged(data) {
-    var swtch = data.object;
-    if (!swtch.android) {
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var switch_common_1 = require("./switch-common");
+__export(require("./switch-common"));
+var CheckedChangeListener;
+function initializeCheckedChangeListener() {
+    if (CheckedChangeListener) {
         return;
     }
-    swtch.android.setChecked(data.newValue);
+    var CheckedChangeListenerImpl = (function (_super) {
+        __extends(CheckedChangeListenerImpl, _super);
+        function CheckedChangeListenerImpl(owner) {
+            _super.call(this);
+            this.owner = owner;
+            return global.__native(this);
+        }
+        CheckedChangeListenerImpl.prototype.onCheckedChanged = function (buttonView, isChecked) {
+            var owner = this.owner;
+            switch_common_1.checkedProperty.nativeValueChange(owner, isChecked);
+        };
+        CheckedChangeListenerImpl = __decorate([
+            Interfaces([android.widget.CompoundButton.OnCheckedChangeListener])
+        ], CheckedChangeListenerImpl);
+        return CheckedChangeListenerImpl;
+    }(java.lang.Object));
+    CheckedChangeListener = CheckedChangeListenerImpl;
 }
-common.Switch.checkedProperty.metadata.onSetNativeValue = onCheckedPropertyChanged;
-global.moduleMerge(common, exports);
 var Switch = (function (_super) {
     __extends(Switch, _super);
     function Switch() {
@@ -21,51 +50,79 @@ var Switch = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    Switch.prototype._createUI = function () {
+    Switch.prototype._createNativeView = function () {
+        initializeCheckedChangeListener();
         this._android = new android.widget.Switch(this._context);
-        var that = new WeakRef(this);
-        this._android.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener({
-            get owner() {
-                return that.get();
-            },
-            onCheckedChanged: function (sender, isChecked) {
-                if (this.owner) {
-                    this.owner._onPropertyChangedFromNative(common.Switch.checkedProperty, isChecked);
-                }
+        this.listener = this.listener || new CheckedChangeListener(this);
+        this._android.setOnCheckedChangeListener(this.listener);
+        return this._android;
+    };
+    Object.defineProperty(Switch.prototype, switch_common_1.checkedProperty.native, {
+        get: function () {
+            return false;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Switch.prototype, switch_common_1.checkedProperty.native, {
+        set: function (value) {
+            this._android.setChecked(value);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Switch.prototype, switch_common_1.colorProperty.native, {
+        get: function () {
+            return -1;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Switch.prototype, switch_common_1.colorProperty.native, {
+        set: function (value) {
+            if (value instanceof switch_common_1.Color) {
+                this._android.getThumbDrawable().setColorFilter(value.android, android.graphics.PorterDuff.Mode.SRC_IN);
             }
-        }));
-    };
+            else {
+                this._android.getThumbDrawable().clearColorFilter();
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Switch.prototype, switch_common_1.backgroundColorProperty.native, {
+        get: function () {
+            return -1;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Switch.prototype, switch_common_1.backgroundColorProperty.native, {
+        set: function (value) {
+            if (value instanceof switch_common_1.Color) {
+                this._android.getTrackDrawable().setColorFilter(value.android, android.graphics.PorterDuff.Mode.SRC_IN);
+            }
+            else {
+                this._android.getTrackDrawable().clearColorFilter();
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Switch.prototype, switch_common_1.backgroundInternalProperty.native, {
+        get: function () {
+            return null;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Switch.prototype, switch_common_1.backgroundInternalProperty.native, {
+        set: function (value) {
+            //
+        },
+        enumerable: true,
+        configurable: true
+    });
     return Switch;
-}(common.Switch));
+}(switch_common_1.SwitchBase));
 exports.Switch = Switch;
-var SwitchStyler = (function () {
-    function SwitchStyler() {
-    }
-    SwitchStyler.setColorProperty = function (view, newValue) {
-        var sw = view._nativeView;
-        var drawable = sw.getThumbDrawable();
-        if (drawable) {
-            drawable.setColorFilter(newValue, android.graphics.PorterDuff.Mode.SRC_IN);
-        }
-    };
-    SwitchStyler.resetColorProperty = function (view, nativeValue) {
-    };
-    SwitchStyler.setBackgroundAndBorderProperty = function (view, newValue) {
-        var sw = view._nativeView;
-        var drawable = sw.getTrackDrawable();
-        if (drawable) {
-            drawable.setColorFilter(newValue, android.graphics.PorterDuff.Mode.SRC_IN);
-        }
-    };
-    SwitchStyler.resetBackgroundAndBorderProperty = function (view, nativeValue) {
-    };
-    SwitchStyler.registerHandlers = function () {
-        style.registerHandler(style.colorProperty, new style.StylePropertyChangedHandler(SwitchStyler.setColorProperty, SwitchStyler.resetColorProperty), "Switch");
-        style.registerHandler(style.backgroundColorProperty, new style.StylePropertyChangedHandler(SwitchStyler.setBackgroundAndBorderProperty, SwitchStyler.resetBackgroundAndBorderProperty), "Switch");
-        style.registerHandler(style.backgroundInternalProperty, style.ignorePropertyHandler, "Switch");
-    };
-    return SwitchStyler;
-}());
-exports.SwitchStyler = SwitchStyler;
-SwitchStyler.registerHandlers();
-//# sourceMappingURL=switch.js.map

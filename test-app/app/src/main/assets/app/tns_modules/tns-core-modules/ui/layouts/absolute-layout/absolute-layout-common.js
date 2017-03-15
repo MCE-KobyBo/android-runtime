@@ -1,65 +1,71 @@
-var layout_base_1 = require("ui/layouts/layout-base");
-var view_1 = require("ui/core/view");
-var proxy_1 = require("ui/core/proxy");
-var dependency_observable_1 = require("ui/core/dependency-observable");
-var special_properties_1 = require("ui/builder/special-properties");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var layout_base_1 = require("../layout-base");
+__export(require("../layout-base"));
+layout_base_1.View.prototype.effectiveLeft = 0;
+layout_base_1.View.prototype.effectiveTop = 0;
 function validateArgs(element) {
     if (!element) {
         throw new Error("element cannot be null or undefinied.");
     }
     return element;
 }
-special_properties_1.registerSpecialProperty("left", function (instance, propertyValue) {
-    AbsoluteLayout.setLeft(instance, !isNaN(+propertyValue) && +propertyValue);
-});
-special_properties_1.registerSpecialProperty("top", function (instance, propertyValue) {
-    AbsoluteLayout.setTop(instance, !isNaN(+propertyValue) && +propertyValue);
-});
-var AbsoluteLayout = (function (_super) {
-    __extends(AbsoluteLayout, _super);
-    function AbsoluteLayout() {
+var AbsoluteLayoutBase = (function (_super) {
+    __extends(AbsoluteLayoutBase, _super);
+    function AbsoluteLayoutBase() {
         _super.apply(this, arguments);
     }
-    AbsoluteLayout.isValid = function (value) {
-        return isFinite(value);
+    // TODO: Do we still need this? it can be get like view.left
+    AbsoluteLayoutBase.getLeft = function (element) {
+        return validateArgs(element).left;
     };
-    AbsoluteLayout.onLeftPropertyChanged = function (data) {
-        var view = data.object;
-        if (view instanceof view_1.View) {
-            var layout = view.parent;
-            if (layout instanceof AbsoluteLayout) {
-                layout.onLeftChanged(view, data.oldValue, data.newValue);
-            }
-        }
+    // TODO: Do we still need this? it can be set like view.left=value
+    AbsoluteLayoutBase.setLeft = function (element, value) {
+        validateArgs(element).left = value;
     };
-    AbsoluteLayout.onTopPropertyChanged = function (data) {
-        var view = data.object;
-        if (view instanceof view_1.View) {
-            var layout = view.parent;
-            if (layout instanceof AbsoluteLayout) {
-                layout.onTopChanged(view, data.oldValue, data.newValue);
-            }
-        }
+    // TODO: Do we still need this? it can be get like view.top
+    AbsoluteLayoutBase.getTop = function (element) {
+        return validateArgs(element).top;
     };
-    AbsoluteLayout.getLeft = function (element) {
-        return validateArgs(element)._getValue(AbsoluteLayout.leftProperty);
+    // TODO: Do we still need this? it can be set like view.top=value
+    AbsoluteLayoutBase.setTop = function (element, value) {
+        validateArgs(element).top = value;
     };
-    AbsoluteLayout.setLeft = function (element, value) {
-        validateArgs(element)._setValue(AbsoluteLayout.leftProperty, value);
+    AbsoluteLayoutBase.prototype.onLeftChanged = function (view, oldValue, newValue) {
+        //
     };
-    AbsoluteLayout.getTop = function (element) {
-        return validateArgs(element)._getValue(AbsoluteLayout.topProperty);
+    AbsoluteLayoutBase.prototype.onTopChanged = function (view, oldValue, newValue) {
+        //
     };
-    AbsoluteLayout.setTop = function (element, value) {
-        validateArgs(element)._setValue(AbsoluteLayout.topProperty, value);
-    };
-    AbsoluteLayout.prototype.onLeftChanged = function (view, oldValue, newValue) {
-    };
-    AbsoluteLayout.prototype.onTopChanged = function (view, oldValue, newValue) {
-    };
-    AbsoluteLayout.leftProperty = new dependency_observable_1.Property("left", "AbsoluteLayout", new proxy_1.PropertyMetadata(0, undefined, AbsoluteLayout.onLeftPropertyChanged, AbsoluteLayout.isValid));
-    AbsoluteLayout.topProperty = new dependency_observable_1.Property("top", "AbsoluteLayout", new proxy_1.PropertyMetadata(0, undefined, AbsoluteLayout.onTopPropertyChanged, AbsoluteLayout.isValid));
-    return AbsoluteLayout;
+    return AbsoluteLayoutBase;
 }(layout_base_1.LayoutBase));
-exports.AbsoluteLayout = AbsoluteLayout;
-//# sourceMappingURL=absolute-layout-common.js.map
+exports.AbsoluteLayoutBase = AbsoluteLayoutBase;
+exports.leftProperty = new layout_base_1.Property({
+    name: "left", defaultValue: layout_base_1.zeroLength,
+    valueChanged: function (target, oldValue, newValue) {
+        target.effectiveLeft = layout_base_1.Length.toDevicePixels(newValue, 0);
+        var layout = target.parent;
+        if (layout instanceof AbsoluteLayoutBase) {
+            layout.onLeftChanged(target, oldValue, newValue);
+        }
+    }, valueConverter: function (v) { return layout_base_1.Length.parse(v); }
+});
+exports.leftProperty.register(layout_base_1.View);
+exports.topProperty = new layout_base_1.Property({
+    name: "top", defaultValue: layout_base_1.zeroLength,
+    valueChanged: function (target, oldValue, newValue) {
+        target.effectiveTop = layout_base_1.Length.toDevicePixels(newValue, 0);
+        var layout = target.parent;
+        if (layout instanceof AbsoluteLayoutBase) {
+            layout.onTopChanged(target, oldValue, newValue);
+        }
+    }, valueConverter: function (v) { return layout_base_1.Length.parse(v); }
+});
+exports.topProperty.register(layout_base_1.View);

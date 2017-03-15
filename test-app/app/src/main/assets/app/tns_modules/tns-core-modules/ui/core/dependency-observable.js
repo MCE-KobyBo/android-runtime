@@ -1,8 +1,7 @@
 var observable_1 = require("data/observable");
-var types = require("utils/types");
+var types_1 = require("utils/types");
+var properties_1 = require("ui/core/properties");
 var propertyFromKey = {};
-var propertyIdCounter = 0;
-exports.unsetValue = new Object();
 function generatePropertyKey(name, ownerType, validate) {
     if (validate) {
         validateRegisterParameters(name, ownerType);
@@ -20,7 +19,7 @@ function validateRegisterParameters(name, ownerType) {
 function getPropertyByNameAndType(name, owner) {
     var result;
     var key;
-    var classInfo = types.getClassInfo(owner);
+    var classInfo = types_1.getClassInfo(owner);
     while (classInfo) {
         key = generatePropertyKey(name, classInfo.name);
         result = propertyFromKey[key];
@@ -51,14 +50,7 @@ var PropertyMetadata = (function () {
         if (options === void 0) { options = PropertyMetadataSettings.None; }
         this.defaultValue = defaultValue;
         this.options = options;
-        this.defaultValue = defaultValue;
-        this.options = options;
-        this.onValueChanged = onChanged;
-        this.onValidateValue = onValidateValue;
-        this.equalityComparer = equalityComparer;
-        this.inheritable = (options & PropertyMetadataSettings.Inheritable) === PropertyMetadataSettings.Inheritable;
-        this.affectsStyle = (options & PropertyMetadataSettings.AffectsStyle) === PropertyMetadataSettings.AffectsStyle;
-        this.affectsLayout = (options & PropertyMetadataSettings.AffectsLayout) === PropertyMetadataSettings.AffectsLayout;
+        throw new Error("* @deprecated use 'ui/core/properties' module instead.");
     }
     return PropertyMetadata;
 }());
@@ -68,27 +60,7 @@ var Property = (function () {
         this.name = name;
         this.ownerType = ownerType;
         this.metadata = metadata;
-        this.key = generatePropertyKey(name, ownerType, true);
-        if (propertyFromKey[this.key]) {
-            throw new Error("Property " + name + " already registered for type " + ownerType + ".");
-        }
-        propertyFromKey[this.key] = this;
-        if (!metadata || !(metadata instanceof PropertyMetadata)) {
-            throw new Error("Expected valid PropertyMetadata instance.");
-        }
-        this.name = name;
-        this.nameEvent = name + "Change";
-        this.ownerType = ownerType;
-        this.metadata = metadata;
-        this.id = propertyIdCounter++;
-        this.valueConverter = valueConverter;
-        this.defaultValue = metadata.defaultValue;
-        this.onValueChanged = metadata.onValueChanged;
-        this.onValidateValue = metadata.onValidateValue;
-        this.equalityComparer = metadata.equalityComparer || (function (x, y) { return x === y; });
-        this.inheritable = metadata.inheritable;
-        this.affectsStyle = metadata.affectsStyle;
-        this.affectsLayout = metadata.affectsLayout;
+        throw new Error("* @deprecated use 'ui/core/properties' module instead.");
     }
     return Property;
 }());
@@ -97,6 +69,7 @@ var PropertyEntry = (function () {
     function PropertyEntry(property) {
         this.property = property;
         this.valueSource = ValueSource.Default;
+        throw new Error("* @deprecated use 'ui/core/properties' module instead.");
     }
     PropertyEntry.prototype.resetValue = function () {
         this.valueSource = ValueSource.Default;
@@ -108,8 +81,10 @@ exports.PropertyEntry = PropertyEntry;
 var DependencyObservable = (function (_super) {
     __extends(DependencyObservable, _super);
     function DependencyObservable() {
-        _super.apply(this, arguments);
-        this._propertyEntries = {};
+        var _this = _super.call(this) || this;
+        _this._propertyEntries = {};
+        throw new Error("* @deprecated use 'ui/core/view-base or ui/core/view' as base class.");
+        return _this;
     }
     DependencyObservable.prototype.set = function (name, value) {
         var property = getPropertyByNameAndType(name, this);
@@ -220,8 +195,7 @@ var DependencyObservable = (function (_super) {
         }
         var propName = property.name;
         if (this.hasListeners(observable_1.Observable.propertyChangeEvent)) {
-            var changeData = _super.prototype._createPropertyChangeData.call(this, propName, newValue);
-            this.notify(changeData);
+            this.notifyPropertyChange(propName, newValue);
         }
         var eventName = property.nameEvent;
         if (this.hasListeners(eventName)) {
@@ -255,11 +229,8 @@ var DependencyObservable = (function (_super) {
             }
         }
     };
-    DependencyObservable.prototype.toString = function () {
-        return this.typeName;
-    };
     DependencyObservable.prototype._setValueInternal = function (property, value, source) {
-        if (value === exports.unsetValue) {
+        if (value === properties_1.unsetValue) {
             this._resetValue(property, source);
             return;
         }
@@ -270,7 +241,7 @@ var DependencyObservable = (function (_super) {
             throw new Error("Invalid value " + realValue + " for property " + property.name);
         }
         var converter = property.valueConverter;
-        if (converter && types.isString(realValue)) {
+        if (converter && types_1.isString(realValue)) {
             realValue = converter(realValue);
         }
         var entry = this._propertyEntries[property.id];

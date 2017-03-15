@@ -20,16 +20,16 @@ var SelectorCore = (function () {
     function SelectorCore() {
     }
     SelectorCore.prototype.lookupSort = function (sorter, base) { sorter.sortAsUniversal(base || this); };
-    SelectorCore = __decorate([
-        SelectorProperties(0, 0, Match.Static)
-    ], SelectorCore);
     return SelectorCore;
 }());
+SelectorCore = __decorate([
+    SelectorProperties(0, 0, Match.Static)
+], SelectorCore);
 exports.SelectorCore = SelectorCore;
 var SimpleSelector = (function (_super) {
     __extends(SimpleSelector, _super);
     function SimpleSelector() {
-        _super.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     SimpleSelector.prototype.accumulateChanges = function (node, map) {
         if (!this.dynamic) {
@@ -53,90 +53,94 @@ function wrap(text) {
 var InvalidSelector = (function (_super) {
     __extends(InvalidSelector, _super);
     function InvalidSelector(e) {
-        _super.call(this);
-        this.e = e;
+        var _this = _super.call(this) || this;
+        _this.e = e;
+        return _this;
     }
     InvalidSelector.prototype.toString = function () { return "<error: " + this.e + ">"; };
     InvalidSelector.prototype.match = function (node) { return false; };
     InvalidSelector.prototype.lookupSort = function (sorter, base) {
     };
-    InvalidSelector = __decorate([
-        SelectorProperties(0, 4, Match.Static)
-    ], InvalidSelector);
     return InvalidSelector;
 }(SimpleSelector));
+InvalidSelector = __decorate([
+    SelectorProperties(0, 4, Match.Static)
+], InvalidSelector);
 exports.InvalidSelector = InvalidSelector;
 var UniversalSelector = (function (_super) {
     __extends(UniversalSelector, _super);
     function UniversalSelector() {
-        _super.apply(this, arguments);
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     UniversalSelector.prototype.toString = function () { return "*" + wrap(this.combinator); };
     UniversalSelector.prototype.match = function (node) { return true; };
-    UniversalSelector = __decorate([
-        SelectorProperties(0, 0, Match.Static)
-    ], UniversalSelector);
     return UniversalSelector;
 }(SimpleSelector));
+UniversalSelector = __decorate([
+    SelectorProperties(0, 0, Match.Static)
+], UniversalSelector);
 exports.UniversalSelector = UniversalSelector;
 var IdSelector = (function (_super) {
     __extends(IdSelector, _super);
     function IdSelector(id) {
-        _super.call(this);
-        this.id = id;
+        var _this = _super.call(this) || this;
+        _this.id = id;
+        return _this;
     }
     IdSelector.prototype.toString = function () { return "#" + this.id + wrap(this.combinator); };
     IdSelector.prototype.match = function (node) { return node.id === this.id; };
     IdSelector.prototype.lookupSort = function (sorter, base) { sorter.sortById(this.id, base || this); };
-    IdSelector = __decorate([
-        SelectorProperties(65536, 3, Match.Static)
-    ], IdSelector);
     return IdSelector;
 }(SimpleSelector));
+IdSelector = __decorate([
+    SelectorProperties(65536, 3, Match.Static)
+], IdSelector);
 exports.IdSelector = IdSelector;
 var TypeSelector = (function (_super) {
     __extends(TypeSelector, _super);
     function TypeSelector(cssType) {
-        _super.call(this);
-        this.cssType = cssType;
+        var _this = _super.call(this) || this;
+        _this.cssType = cssType;
+        return _this;
     }
     TypeSelector.prototype.toString = function () { return "" + this.cssType + wrap(this.combinator); };
     TypeSelector.prototype.match = function (node) { return node.cssType === this.cssType; };
     TypeSelector.prototype.lookupSort = function (sorter, base) { sorter.sortByType(this.cssType, base || this); };
-    TypeSelector = __decorate([
-        SelectorProperties(1, 1, Match.Static)
-    ], TypeSelector);
     return TypeSelector;
 }(SimpleSelector));
+TypeSelector = __decorate([
+    SelectorProperties(1, 1, Match.Static)
+], TypeSelector);
 exports.TypeSelector = TypeSelector;
 var ClassSelector = (function (_super) {
     __extends(ClassSelector, _super);
     function ClassSelector(cssClass) {
-        _super.call(this);
-        this.cssClass = cssClass;
+        var _this = _super.call(this) || this;
+        _this.cssClass = cssClass;
+        return _this;
     }
     ClassSelector.prototype.toString = function () { return "." + this.cssClass + wrap(this.combinator); };
     ClassSelector.prototype.match = function (node) { return node.cssClasses && node.cssClasses.has(this.cssClass); };
     ClassSelector.prototype.lookupSort = function (sorter, base) { sorter.sortByClass(this.cssClass, base || this); };
-    ClassSelector = __decorate([
-        SelectorProperties(256, 2, Match.Static)
-    ], ClassSelector);
     return ClassSelector;
 }(SimpleSelector));
+ClassSelector = __decorate([
+    SelectorProperties(256, 2, Match.Static)
+], ClassSelector);
 exports.ClassSelector = ClassSelector;
 var AttributeSelector = (function (_super) {
     __extends(AttributeSelector, _super);
     function AttributeSelector(attribute, test, value) {
-        _super.call(this);
-        this.attribute = attribute;
-        this.test = test;
-        this.value = value;
+        var _this = _super.call(this) || this;
+        _this.attribute = attribute;
+        _this.test = test;
+        _this.value = value;
         if (!test) {
-            this.match = function (node) { return !types_1.isNullOrUndefined(node[attribute]); };
-            return;
+            _this.match = function (node) { return !types_1.isNullOrUndefined(node[attribute]); };
+            return _this;
         }
         if (!value) {
-            this.match = function (node) { return false; };
+            _this.match = function (node) { return false; };
         }
         var escapedValue = utils_1.escapeRegexSymbols(value);
         var regexp = null;
@@ -155,8 +159,8 @@ var AttributeSelector = (function (_super) {
                 break;
             case "~=":
                 if (/\s/.test(value)) {
-                    this.match = function (node) { return false; };
-                    return;
+                    _this.match = function (node) { return false; };
+                    return _this;
                 }
                 regexp = new RegExp("(^|\\s)" + escapedValue + "(\\s|$)");
                 break;
@@ -165,48 +169,50 @@ var AttributeSelector = (function (_super) {
                 break;
         }
         if (regexp) {
-            this.match = function (node) { return regexp.test(node[attribute] + ""); };
-            return;
+            _this.match = function (node) { return regexp.test(node[attribute] + ""); };
+            return _this;
         }
         else {
-            this.match = function (node) { return false; };
-            return;
+            _this.match = function (node) { return false; };
+            return _this;
         }
     }
     AttributeSelector.prototype.toString = function () { return "[" + this.attribute + wrap(this.test) + ((this.test && this.value) || '') + "]" + wrap(this.combinator); };
     AttributeSelector.prototype.match = function (node) { return false; };
     AttributeSelector.prototype.mayMatch = function (node) { return true; };
     AttributeSelector.prototype.trackChanges = function (node, map) { map.addAttribute(node, this.attribute); };
-    AttributeSelector = __decorate([
-        SelectorProperties(256, 0, Match.Dynamic)
-    ], AttributeSelector);
     return AttributeSelector;
 }(SimpleSelector));
+AttributeSelector = __decorate([
+    SelectorProperties(256, 0, Match.Dynamic)
+], AttributeSelector);
 exports.AttributeSelector = AttributeSelector;
 var PseudoClassSelector = (function (_super) {
     __extends(PseudoClassSelector, _super);
     function PseudoClassSelector(cssPseudoClass) {
-        _super.call(this);
-        this.cssPseudoClass = cssPseudoClass;
+        var _this = _super.call(this) || this;
+        _this.cssPseudoClass = cssPseudoClass;
+        return _this;
     }
     PseudoClassSelector.prototype.toString = function () { return ":" + this.cssPseudoClass + wrap(this.combinator); };
     PseudoClassSelector.prototype.match = function (node) { return node.cssPseudoClasses && node.cssPseudoClasses.has(this.cssPseudoClass); };
     PseudoClassSelector.prototype.mayMatch = function (node) { return true; };
     PseudoClassSelector.prototype.trackChanges = function (node, map) { map.addPseudoClass(node, this.cssPseudoClass); };
-    PseudoClassSelector = __decorate([
-        SelectorProperties(256, 0, Match.Dynamic)
-    ], PseudoClassSelector);
     return PseudoClassSelector;
 }(SimpleSelector));
+PseudoClassSelector = __decorate([
+    SelectorProperties(256, 0, Match.Dynamic)
+], PseudoClassSelector);
 exports.PseudoClassSelector = PseudoClassSelector;
 var SimpleSelectorSequence = (function (_super) {
     __extends(SimpleSelectorSequence, _super);
     function SimpleSelectorSequence(selectors) {
-        _super.call(this);
-        this.selectors = selectors;
-        this.specificity = selectors.reduce(function (sum, sel) { return sel.specificity + sum; }, 0);
-        this.head = this.selectors.reduce(function (prev, curr) { return !prev || (curr.rarity > prev.rarity) ? curr : prev; }, null);
-        this.dynamic = selectors.some(function (sel) { return sel.dynamic; });
+        var _this = _super.call(this) || this;
+        _this.selectors = selectors;
+        _this.specificity = selectors.reduce(function (sum, sel) { return sel.specificity + sum; }, 0);
+        _this.head = _this.selectors.reduce(function (prev, curr) { return !prev || (curr.rarity > prev.rarity) ? curr : prev; }, null);
+        _this.dynamic = selectors.some(function (sel) { return sel.dynamic; });
+        return _this;
     }
     SimpleSelectorSequence.prototype.toString = function () { return "" + this.selectors.join("") + wrap(this.combinator); };
     SimpleSelectorSequence.prototype.match = function (node) { return this.selectors.every(function (sel) { return sel.match(node); }); };
@@ -225,8 +231,8 @@ exports.SimpleSelectorSequence = SimpleSelectorSequence;
 var Selector = (function (_super) {
     __extends(Selector, _super);
     function Selector(selectors) {
-        _super.call(this);
-        this.selectors = selectors;
+        var _this = _super.call(this) || this;
+        _this.selectors = selectors;
         var lastGroup;
         var groups = [];
         selectors.reverse().forEach(function (sel) {
@@ -241,10 +247,11 @@ var Selector = (function (_super) {
                     throw new Error("Unsupported combinator \"" + sel.combinator + "\".");
             }
         });
-        this.groups = groups.map(function (g) { return new Selector.ChildGroup(g); });
-        this.last = selectors[0];
-        this.specificity = selectors.reduce(function (sum, sel) { return sel.specificity + sum; }, 0);
-        this.dynamic = selectors.some(function (sel) { return sel.dynamic; });
+        _this.groups = groups.map(function (g) { return new Selector.ChildGroup(g); });
+        _this.last = selectors[0];
+        _this.specificity = selectors.reduce(function (sum, sel) { return sel.specificity + sum; }, 0);
+        _this.dynamic = selectors.some(function (sel) { return sel.dynamic; });
+        return _this;
     }
     Selector.prototype.toString = function () { return this.selectors.join(""); };
     Selector.prototype.match = function (node) {
@@ -316,7 +323,6 @@ var Selector = (function (_super) {
     return Selector;
 }(SelectorCore));
 exports.Selector = Selector;
-var Selector;
 (function (Selector) {
     var ChildGroup = (function () {
         function ChildGroup(selectors) {
@@ -336,6 +342,7 @@ var Selector;
     }());
     Selector.ChildGroup = ChildGroup;
 })(Selector = exports.Selector || (exports.Selector = {}));
+exports.Selector = Selector;
 var RuleSet = (function () {
     function RuleSet(selectors, declarations) {
         var _this = this;
@@ -343,7 +350,7 @@ var RuleSet = (function () {
         this.declarations = declarations;
         this.selectors.forEach(function (sel) { return sel.ruleset = _this; });
     }
-    RuleSet.prototype.toString = function () { return this.selectors.join(", ") + " {" + this.declarations.map(function (d, i) { return ("" + (i === 0 ? " " : "") + d.property + ": " + d.value); }).join("; ") + " }"; };
+    RuleSet.prototype.toString = function () { return this.selectors.join(", ") + " {" + this.declarations.map(function (d, i) { return "" + (i === 0 ? " " : "") + d.property + ": " + d.value; }).join("; ") + " }"; };
     RuleSet.prototype.lookupSort = function (sorter) { this.selectors.forEach(function (sel) { return sel.lookupSort(sorter); }); };
     return RuleSet;
 }());

@@ -1,5 +1,13 @@
-var textModule = require("text");
-var utils = require("utils/utils");
+"use strict";
+var textModule = require("../text");
+var application_1 = require("../application");
+var applicationContext;
+function getApplicationContext() {
+    if (!applicationContext) {
+        applicationContext = application_1.getNativeApplication().getApplicationContext();
+    }
+    return applicationContext;
+}
 var FileSystemAccess = (function () {
     function FileSystemAccess() {
         this._pathSeparator = "/";
@@ -15,6 +23,7 @@ var FileSystemAccess = (function () {
             return { path: parent.getAbsolutePath(), name: parent.getName() };
         }
         catch (exception) {
+            // TODO: unified approach for error messages
             if (onError) {
                 onError(exception);
             }
@@ -95,6 +104,7 @@ var FileSystemAccess = (function () {
                 }
                 return;
             }
+            // TODO: Asynchronous
             this.deleteFolderContent(javaFile);
             if (!javaFile.delete()) {
                 if (onError) {
@@ -117,6 +127,7 @@ var FileSystemAccess = (function () {
                 }
                 return;
             }
+            // TODO: Asynchronous
             this.deleteFolderContent(javaFile);
         }
         catch (exception) {
@@ -147,15 +158,15 @@ var FileSystemAccess = (function () {
         }
     };
     FileSystemAccess.prototype.getDocumentsFolderPath = function () {
-        var dir = utils.ad.getApplicationContext().getFilesDir();
+        var dir = getApplicationContext().getFilesDir();
         return dir.getAbsolutePath();
     };
     FileSystemAccess.prototype.getLogicalRootPath = function () {
-        var dir = utils.ad.getApplicationContext().getFilesDir();
+        var dir = getApplicationContext().getFilesDir();
         return dir.getCanonicalPath();
     };
     FileSystemAccess.prototype.getTempFolderPath = function () {
-        var dir = utils.ad.getApplicationContext().getCacheDir();
+        var dir = getApplicationContext().getCacheDir();
         return dir.getAbsolutePath();
     };
     FileSystemAccess.prototype.getCurrentAppPath = function () {
@@ -191,7 +202,6 @@ var FileSystemAccess = (function () {
     };
     FileSystemAccess.prototype.readText = function (path, onError, encoding) {
         try {
-            var types = require("utils/types");
             var javaFile = new java.io.File(path);
             var stream = new java.io.FileInputStream(javaFile);
             var actualEncoding = encoding;
@@ -200,19 +210,24 @@ var FileSystemAccess = (function () {
             }
             var reader = new java.io.InputStreamReader(stream, actualEncoding);
             var bufferedReader = new java.io.BufferedReader(reader);
+            // TODO: We will need to read the entire file to a CharBuffer instead of reading it line by line
+            // TODO: bufferedReader.read(CharBuffer) does not currently work
             var line = undefined;
             var result = "";
             while (true) {
                 line = bufferedReader.readLine();
-                if (types.isNullOrUndefined(line)) {
+                if (line === null) {
                     break;
                 }
                 if (result.length > 0) {
+                    // add the new line manually to the result
+                    // TODO: Try with CharBuffer at a later stage, when the Bridge allows it
                     result += "\n";
                 }
                 result += line;
             }
             if (actualEncoding === textModule.encoding.UTF_8) {
+                // Remove UTF8 BOM if present. http://www.rgagnon.com/javadetails/java-handle-utf8-file-with-bom.html
                 result = FileSystemAccess._removeUtf8Bom(result);
             }
             bufferedReader.close();
@@ -251,7 +266,7 @@ var FileSystemAccess = (function () {
     FileSystemAccess.prototype.deleteFolderContent = function (file) {
         var filesList = file.listFiles();
         if (filesList.length === 0) {
-            return true;
+            return true; // Nothing to delete, so success!
         }
         var i, childFile, success = false;
         for (i = 0; i < filesList.length; i++) {
@@ -278,6 +293,7 @@ var FileSystemAccess = (function () {
                     created = javaFile.createNewFile();
                 }
                 if (!created) {
+                    // TODO: unified approach for error messages
                     if (onError) {
                         onError("Failed to create new java File for path " + javaFile.getAbsolutePath());
                     }
@@ -292,12 +308,15 @@ var FileSystemAccess = (function () {
             return { path: path, name: javaFile.getName(), extension: this.getFileExtension(path) };
         }
         catch (exception) {
+            // TODO: unified approach for error messages
             if (onError) {
                 onError(exception);
             }
             return undefined;
         }
     };
+    // TODO: This method is the same as in the iOS implementation.
+    // Make it in a separate file / module so it can be reused from both implementations.
     FileSystemAccess.prototype.getFileExtension = function (path) {
         var dotIndex = path.lastIndexOf(".");
         if (dotIndex && dotIndex >= 0 && dotIndex < path.length) {
@@ -368,4 +387,3 @@ var FileSystemAccess = (function () {
     return FileSystemAccess;
 }());
 exports.FileSystemAccess = FileSystemAccess;
-//# sourceMappingURL=file-system-access.js.map

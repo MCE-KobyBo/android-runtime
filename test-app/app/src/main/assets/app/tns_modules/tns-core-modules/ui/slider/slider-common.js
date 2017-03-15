@@ -1,60 +1,56 @@
-var view = require("ui/core/view");
-var dependencyObservable = require("ui/core/dependency-observable");
-var proxy = require("ui/core/proxy");
-var Slider = (function (_super) {
-    __extends(Slider, _super);
-    function Slider() {
-        _super.call(this);
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var view_1 = require("../core/view");
+__export(require("../core/view"));
+// TODO: Extract base Range class for slider and progress
+var SliderBase = (function (_super) {
+    __extends(SliderBase, _super);
+    function SliderBase() {
+        _super.apply(this, arguments);
     }
-    Object.defineProperty(Slider.prototype, "value", {
-        get: function () {
-            return this._getValue(Slider.valueProperty);
-        },
-        set: function (value) {
-            var newValue = value;
-            newValue = Math.max(newValue, this.minValue);
-            newValue = Math.min(newValue, this.maxValue);
-            this._setValue(Slider.valueProperty, newValue);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Slider.prototype, "minValue", {
-        get: function () {
-            return this._getValue(Slider.minValueProperty);
-        },
-        set: function (newValue) {
-            this._setValue(Slider.minValueProperty, newValue);
-            if (newValue > this.maxValue) {
-                this._setValue(Slider.maxValueProperty, newValue);
-            }
-            if (newValue > this.value) {
-                this._setValue(Slider.valueProperty, newValue);
-            }
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Slider.prototype, "maxValue", {
-        get: function () {
-            return this._getValue(Slider.maxValueProperty);
-        },
-        set: function (newValue) {
-            this._setValue(Slider.maxValueProperty, newValue);
-            if (newValue < this.minValue) {
-                this._setValue(Slider.minValueProperty, newValue);
-            }
-            if (newValue < this.value) {
-                this._setValue(Slider.valueProperty, newValue);
-            }
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Slider.valueProperty = new dependencyObservable.Property("value", "Slider", new proxy.PropertyMetadata(0));
-    Slider.minValueProperty = new dependencyObservable.Property("minValue", "Slider", new proxy.PropertyMetadata(0));
-    Slider.maxValueProperty = new dependencyObservable.Property("maxValue", "Slider", new proxy.PropertyMetadata(100));
-    return Slider;
-}(view.View));
-exports.Slider = Slider;
-//# sourceMappingURL=slider-common.js.map
+    return SliderBase;
+}(view_1.View));
+exports.SliderBase = SliderBase;
+/**
+ * Represents the observable property backing the value property of each Slider instance.
+ */
+exports.valueProperty = new view_1.CoercibleProperty({
+    name: "value", defaultValue: 0, coerceValue: function (target, value) {
+        value = Math.max(value, target.minValue);
+        value = Math.min(value, target.maxValue);
+        return value;
+    }, valueConverter: function (v) { return view_1.isIOS ? parseFloat(v) : parseInt(v); }
+});
+exports.valueProperty.register(SliderBase);
+/**
+ * Represents the observable property backing the minValue property of each Slider instance.
+ */
+exports.minValueProperty = new view_1.Property({
+    name: "minValue", defaultValue: 0, valueChanged: function (target, oldValue, newValue) {
+        exports.maxValueProperty.coerce(target);
+        exports.valueProperty.coerce(target);
+    }, valueConverter: function (v) { return view_1.isIOS ? parseFloat(v) : parseInt(v); }
+});
+exports.minValueProperty.register(SliderBase);
+/**
+ * Represents the observable property backing the maxValue property of each Slider instance.
+ */
+exports.maxValueProperty = new view_1.CoercibleProperty({
+    name: "maxValue", defaultValue: 100, coerceValue: function (target, value) {
+        var minValue = target.minValue;
+        if (value < minValue) {
+            value = minValue;
+        }
+        return value;
+    },
+    valueChanged: function (target, oldValue, newValue) { return exports.valueProperty.coerce(target); },
+    valueConverter: function (v) { return view_1.isIOS ? parseFloat(v) : parseInt(v); }
+});
+exports.maxValueProperty.register(SliderBase);

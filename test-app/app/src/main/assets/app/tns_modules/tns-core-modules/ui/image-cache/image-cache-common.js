@@ -1,4 +1,10 @@
-var observable = require("data/observable");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var observable = require("../../data/observable");
 var Cache = (function (_super) {
     __extends(Cache, _super);
     function Cache() {
@@ -13,6 +19,7 @@ var Cache = (function (_super) {
         if (this._enabled) {
             return;
         }
+        // schedule all pending downloads
         this._enabled = true;
         var request;
         while (this._queue.length > 0 && this._currentDownloads < this.maxRequests) {
@@ -40,6 +47,7 @@ var Cache = (function (_super) {
             this._mergeRequests(existingRequest, request);
         }
         else {
+            // TODO: Potential performance bottleneck - traversing the whole queue on each download request.
             var queueRequest;
             for (var i = 0; i < this._queue.length; i++) {
                 if (this._queue[i].key === request.key) {
@@ -73,20 +81,27 @@ var Cache = (function (_super) {
         }
     };
     Cache.prototype.get = function (key) {
+        // This method is intended to be overridden by the android and ios implementations
         throw new Error("Abstract");
     };
     Cache.prototype.set = function (key, image) {
+        // This method is intended to be overridden by the android and ios implementations
         throw new Error("Abstract");
     };
     Cache.prototype.remove = function (key) {
+        // This method is intended to be overridden by the android and ios implementations
         throw new Error("Abstract");
     };
     Cache.prototype.clear = function () {
+        // This method is intended to be overridden by the android and ios implementations
         throw new Error("Abstract");
     };
+    /* tslint:disable:no-unused-variable */
     Cache.prototype._downloadCore = function (request) {
+        // This method is intended to be overridden by the android and ios implementations
         throw new Error("Abstract");
     };
+    /* tslint:enable:no-unused-variable */
     Cache.prototype._onDownloadCompleted = function (key, image) {
         var request = this._pendingDownloads[key];
         if (request.key && image) {
@@ -138,4 +153,3 @@ var Cache = (function (_super) {
     return Cache;
 }(observable.Observable));
 exports.Cache = Cache;
-//# sourceMappingURL=image-cache-common.js.map

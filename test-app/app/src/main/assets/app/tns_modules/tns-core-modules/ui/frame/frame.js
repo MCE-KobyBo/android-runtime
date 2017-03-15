@@ -1,29 +1,39 @@
-var frameCommon = require("./frame-common");
-var pages = require("ui/page");
-var transitionModule = require("ui/transition");
-var trace = require("trace");
-var observable_1 = require("data/observable");
-var application = require("application");
-var types = require("utils/types");
-global.moduleMerge(frameCommon, exports);
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+// Types.
+var frame_common_1 = require("./frame-common");
+var constants_1 = require("../page/constants");
+var transitionModule = require("../transition");
+__export(require("./frame-common"));
 var HIDDEN = "_hidden";
 var INTENT_EXTRA = "com.tns.activity";
 var FRAMEID = "_frameId";
+var CALLBACKS = "_callbacks";
 var navDepth = -1;
 var fragmentId = -1;
 var activityInitialized = false;
-var CALLBACKS = "_callbacks";
 function onFragmentShown(fragment) {
-    if (trace.enabled) {
-        trace.write("SHOWN " + fragment, trace.categories.NativeLifecycle);
+    if (frame_common_1.traceEnabled()) {
+        frame_common_1.traceWrite("SHOWN " + fragment, frame_common_1.traceCategories.NativeLifecycle);
     }
     var callbacks = fragment[CALLBACKS];
     if (callbacks.clearHistory) {
-        if (trace.enabled) {
-            trace.write(fragment + " has been shown, but it is being cleared from history. Returning.", trace.categories.NativeLifecycle);
+        // This is the fragment which was at the bottom of the stack (fragment0) when we cleared history and called
+        // manager.popBackStack(firstEntryName, android.app.FragmentManager.POP_BACK_STACK_INCLUSIVE);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite(fragment + " has been shown, but it is being cleared from history. Returning.", frame_common_1.traceCategories.NativeLifecycle);
         }
         return null;
     }
+    // TODO: consider putting entry and page in queue so we can safely extract them here. Pass the index of current navigation and extract it from here.
+    // After extracting navigation info - remove this index from navigation stack.
     var frame = callbacks.frame;
     var entry = callbacks.entry;
     var page = entry.resolvedPage;
@@ -38,20 +48,25 @@ function onFragmentShown(fragment) {
     }
     var isBack = currentNavigationContext ? currentNavigationContext.isBackNavigation : false;
     frame._addView(page);
+    // onFragmentShown is called before NativeActivity.start where we call frame.onLoaded
+    // We need to call frame.onLoaded() here so that the call to frame._addView(page) will emit the page.loaded event
+    // before the page.navigatedTo event making the two platforms identical.
     if (!frame.isLoaded) {
         frame._currentEntry = entry;
         frame.onLoaded();
     }
+    // Handle page transitions.
     transitionModule._onFragmentShown(fragment, isBack);
 }
 function onFragmentHidden(fragment, destroyed) {
-    if (trace.enabled) {
-        trace.write("HIDDEN " + fragment + "; destroyed: " + destroyed, trace.categories.NativeLifecycle);
+    if (frame_common_1.traceEnabled()) {
+        frame_common_1.traceWrite("HIDDEN " + fragment + "; destroyed: " + destroyed, frame_common_1.traceCategories.NativeLifecycle);
     }
     var callbacks = fragment[CALLBACKS];
     var isBack = callbacks.entry.isBack;
     callbacks.entry.isBack = undefined;
     callbacks.entry.resolvedPage._fragmentTag = undefined;
+    // Handle page transitions.
     transitionModule._onFragmentHidden(fragment, isBack, destroyed);
 }
 var Frame = (function (_super) {
@@ -67,20 +82,20 @@ var Frame = (function (_super) {
     }
     Object.defineProperty(Frame, "defaultAnimatedNavigation", {
         get: function () {
-            return frameCommon.Frame.defaultAnimatedNavigation;
+            return frame_common_1.FrameBase.defaultAnimatedNavigation;
         },
         set: function (value) {
-            frameCommon.Frame.defaultAnimatedNavigation = value;
+            frame_common_1.FrameBase.defaultAnimatedNavigation = value;
         },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Frame, "defaultTransition", {
         get: function () {
-            return frameCommon.Frame.defaultTransition;
+            return frame_common_1.FrameBase.defaultTransition;
         },
         set: function (value) {
-            frameCommon.Frame.defaultTransition = value;
+            frame_common_1.FrameBase.defaultTransition = value;
         },
         enumerable: true,
         configurable: true
@@ -110,6 +125,9 @@ var Frame = (function (_super) {
         _super.prototype._navigateCore.call(this, backstackEntry);
         var activity = this._android.activity;
         if (!activity) {
+            // We do not have an Activity yet associated. In this case we have two execution paths:
+            // 1. This is the main frame for the application
+            // 2. This is an inner frame which requires a new Activity
             var currentActivity = this._android.currentActivity;
             if (currentActivity) {
                 startActivity(currentActivity, this._android.frameId);
@@ -118,12 +136,14 @@ var Frame = (function (_super) {
             return;
         }
         var manager = activity.getFragmentManager();
+        // Current Fragment
         var currentFragment;
         if (this._currentEntry) {
             this._currentEntry.isNavigation = true;
             currentFragment = manager.findFragmentByTag(this._currentEntry.fragmentTag);
         }
         var clearHistory = backstackEntry.entry.clearHistory;
+        // New Fragment
         if (clearHistory) {
             navDepth = -1;
         }
@@ -139,21 +159,25 @@ var Frame = (function (_super) {
         var callbacks = newFragment[CALLBACKS];
         callbacks.frame = this;
         callbacks.entry = backstackEntry;
+        // backstackEntry
         backstackEntry.isNavigation = true;
         backstackEntry.fragmentTag = newFragmentTag;
         backstackEntry.navDepth = navDepth;
         var fragmentTransaction = manager.beginTransaction();
-        if (trace.enabled) {
-            trace.write("BEGIN TRANSACTION " + fragmentTransaction, trace.categories.Navigation);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("BEGIN TRANSACTION " + fragmentTransaction, frame_common_1.traceCategories.Navigation);
         }
+        // Transitions
         var animated = this._getIsAnimatedNavigation(backstackEntry.entry);
         var navigationTransition = this._getNavigationTransition(backstackEntry.entry);
         if (currentFragment) {
+            // There might be transitions left over from previous forward navigations from the current page.
             transitionModule._clearForwardTransitions(currentFragment);
             if (animated && navigationTransition) {
-                transitionModule._setAndroidFragmentTransitions(navigationTransition, currentFragment, newFragment, fragmentTransaction);
+                transitionModule._setAndroidFragmentTransitions(this.android.cachePagesOnNavigate, navigationTransition, currentFragment, newFragment, fragmentTransaction);
             }
         }
+        // Clear History
         var length = manager.getBackStackEntryCount();
         var emptyNativeBackStack = clearHistory && length > 0;
         if (emptyNativeBackStack) {
@@ -162,63 +186,74 @@ var Frame = (function (_super) {
                 Frame._clearHistory(fragmentToRemove);
             }
             if (currentFragment) {
+                // We need to reverse the transitions because Android will ask the current fragment
+                // to create its POP EXIT animator due to popping the back stack, but in reality
+                // we need to create the EXIT animator because we are actually going forward and not back.
                 transitionModule._prepareCurrentFragmentForClearHistory(currentFragment);
             }
             var firstEntryName = manager.getBackStackEntryAt(0).getName();
-            if (trace.enabled) {
-                trace.write("POP BACK STACK " + firstEntryName, trace.categories.Navigation);
+            if (frame_common_1.traceEnabled()) {
+                frame_common_1.traceWrite("POP BACK STACK " + firstEntryName, frame_common_1.traceCategories.Navigation);
             }
             manager.popBackStackImmediate(firstEntryName, android.app.FragmentManager.POP_BACK_STACK_INCLUSIVE);
         }
+        // Hide/remove current fragment if it exists and was not popped
         if (currentFragment && !emptyNativeBackStack) {
             if (this.android.cachePagesOnNavigate && !clearHistory) {
-                if (trace.enabled) {
-                    trace.write("\tHIDE " + currentFragment, trace.categories.Navigation);
+                if (frame_common_1.traceEnabled()) {
+                    frame_common_1.traceWrite("\tHIDE " + currentFragment, frame_common_1.traceCategories.Navigation);
                 }
                 fragmentTransaction.hide(currentFragment);
             }
             else {
-                if (trace.enabled) {
-                    trace.write("\tREMOVE " + currentFragment, trace.categories.Navigation);
+                if (frame_common_1.traceEnabled()) {
+                    frame_common_1.traceWrite("\tREMOVE " + currentFragment, frame_common_1.traceCategories.Navigation);
                 }
                 fragmentTransaction.remove(currentFragment);
             }
         }
-        if (trace.enabled) {
-            trace.write("\tADD " + newFragmentTag + "<" + callbacks.entry.resolvedPage + ">", trace.categories.Navigation);
+        // Add newFragment
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("\tADD " + newFragmentTag + "<" + callbacks.entry.resolvedPage + ">", frame_common_1.traceCategories.Navigation);
         }
         fragmentTransaction.add(this.containerViewId, newFragment, newFragmentTag);
+        // addToBackStack
         if (this.backStack.length > 0 && currentFragment && !clearHistory) {
-            if (trace.enabled) {
-                trace.write("\tADD TO BACK STACK " + currentFragment, trace.categories.Navigation);
+            // We add each entry in the backstack to avoid the "Stack corrupted" mismatch
+            if (frame_common_1.traceEnabled()) {
+                frame_common_1.traceWrite("\tADD TO BACK STACK " + currentFragment, frame_common_1.traceCategories.Navigation);
             }
             fragmentTransaction.addToBackStack(this._currentEntry.fragmentTag);
         }
         if (currentFragment) {
+            // This bug is fixed on API19+
             ensureAnimationFixed();
             var trans = void 0;
             if (this.android.cachePagesOnNavigate && animationFixed < 0 && !navigationTransition) {
+                // Apparently, there is an Android bug with when hiding fragments with animation.
+                // https://code.google.com/p/android/issues/detail?id=32405
+                // When bug is fixed use animated variable.
                 trans = android.app.FragmentTransaction.TRANSIT_NONE;
             }
             else {
                 trans = animated ? android.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN : android.app.FragmentTransaction.TRANSIT_NONE;
             }
-            if (trace.enabled) {
-                trace.write("\tSET TRANSITION " + (trans === 0 ? "NONE" : "OPEN"), trace.categories.Navigation);
+            if (frame_common_1.traceEnabled()) {
+                frame_common_1.traceWrite("\tSET TRANSITION " + (trans === 0 ? "NONE" : "OPEN"), frame_common_1.traceCategories.Navigation);
             }
             fragmentTransaction.setTransition(trans);
         }
         fragmentTransaction.commit();
-        if (trace.enabled) {
-            trace.write("END TRANSACTION " + fragmentTransaction, trace.categories.Navigation);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("END TRANSACTION " + fragmentTransaction, frame_common_1.traceCategories.Navigation);
         }
     };
     Frame._clearHistory = function (fragment) {
-        if (trace.enabled) {
-            trace.write("CLEAR HISTORY FOR " + fragment, trace.categories.Navigation);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("CLEAR HISTORY FOR " + fragment, frame_common_1.traceCategories.Navigation);
         }
         var callbacks = fragment[CALLBACKS];
-        callbacks.clearHistory = true;
+        callbacks.clearHistory = true; // This is hacky
         transitionModule._clearBackwardTransitions(fragment);
         transitionModule._clearForwardTransitions(fragment);
         transitionModule._removePageNativeViewFromAndroidParent(callbacks.entry.resolvedPage);
@@ -228,15 +263,18 @@ var Frame = (function (_super) {
         navDepth = backstackEntry.navDepth;
         backstackEntry.isNavigation = true;
         if (this._currentEntry) {
+            // We need this information inside onFragmentHidden
             this._currentEntry.isBack = true;
             this._currentEntry.isNavigation = true;
         }
         var manager = this._android.activity.getFragmentManager();
         if (manager.getBackStackEntryCount() > 0) {
+            // pop all other fragments up until the named one
+            // this handles cases where user may navigate to an inner page without adding it on the backstack
             manager.popBackStack(backstackEntry.fragmentTag, android.app.FragmentManager.POP_BACK_STACK_INCLUSIVE);
         }
     };
-    Frame.prototype._createUI = function () {
+    Frame.prototype._createNativeView = function () {
         var root = new org.nativescript.widgets.ContentLayout(this._context);
         if (this._containerViewId < 0) {
             this._containerViewId = android.view.View.generateViewId();
@@ -244,6 +282,7 @@ var Frame = (function (_super) {
         this._android.rootViewGroup = root;
         this._android.rootViewGroup.setId(this._containerViewId);
         this._android.rootViewGroup.addOnAttachStateChangeListener(this._listener);
+        return root;
     };
     Frame.prototype.onNativeViewAttachedToWindow = function (view) {
         if (this._delayedNavigationEntry) {
@@ -252,6 +291,7 @@ var Frame = (function (_super) {
         }
     };
     Frame.prototype.onNativeViewDetachedToWindow = function (view) {
+        // unused for the moment.
     };
     Frame.prototype._popFromFrameStack = function () {
         if (!this._isInFrameStack) {
@@ -262,8 +302,11 @@ var Frame = (function (_super) {
             this._android.activity.finish();
         }
     };
-    Frame.prototype._clearAndroidReference = function () {
+    Frame.prototype._resetNativeView = function () {
         this._android.rootViewGroup.removeOnAttachStateChangeListener(this._listener);
+    };
+    Frame.prototype._disposeNativeView = function () {
+        // we should keep the reference to underlying native object, since frame can contain many pages.
         this._android.rootViewGroup = null;
     };
     Frame.prototype._printNativeBackStack = function () {
@@ -280,10 +323,10 @@ var Frame = (function (_super) {
         }
     };
     Frame.prototype._getNavBarVisible = function (page) {
-        if (types.isDefined(page.actionBarHidden)) {
+        if (page.actionBarHidden !== undefined) {
             return !page.actionBarHidden;
         }
-        if (this._android && types.isDefined(this._android.showActionBar)) {
+        if (this._android && this._android.showActionBar !== undefined) {
             return this._android.showActionBar;
         }
         return true;
@@ -292,49 +335,49 @@ var Frame = (function (_super) {
         var _this = this;
         var activity = this._android.activity;
         if (activity) {
-            var isForegroundActivity = activity === application.android.foregroundActivity;
-            var isPaused = application.android.paused;
+            var isForegroundActivity = activity === frame_common_1.application.android.foregroundActivity;
+            var isPaused = frame_common_1.application.android.paused;
             if (activity && !isForegroundActivity || (isForegroundActivity && isPaused)) {
                 var weakActivity_1 = new WeakRef(activity);
                 var resume_1 = function (args) {
                     var weakActivityInstance = weakActivity_1.get();
                     var isCurrent = args.activity === weakActivityInstance;
                     if (!weakActivityInstance) {
-                        if (trace.enabled) {
-                            trace.write("Frame _processNavigationContext: Drop For Activity GC-ed", trace.categories.Navigation);
+                        if (frame_common_1.traceEnabled()) {
+                            frame_common_1.traceWrite("Frame _processNavigationContext: Drop For Activity GC-ed", frame_common_1.traceCategories.Navigation);
                         }
                         unsubscribe_1();
                         return;
                     }
                     if (isCurrent) {
-                        if (trace.enabled) {
-                            trace.write("Frame _processNavigationContext: Activity.Resumed, Continue", trace.categories.Navigation);
+                        if (frame_common_1.traceEnabled()) {
+                            frame_common_1.traceWrite("Frame _processNavigationContext: Activity.Resumed, Continue", frame_common_1.traceCategories.Navigation);
                         }
                         _super.prototype._processNavigationContext.call(_this, navigationContext);
                         unsubscribe_1();
                     }
                 };
                 var unsubscribe_1 = function () {
-                    if (trace.enabled) {
-                        trace.write("Frame _processNavigationContext: Unsubscribe from Activity.Resumed", trace.categories.Navigation);
+                    if (frame_common_1.traceEnabled()) {
+                        frame_common_1.traceWrite("Frame _processNavigationContext: Unsubscribe from Activity.Resumed", frame_common_1.traceCategories.Navigation);
                     }
-                    application.android.off(application.AndroidApplication.activityResumedEvent, resume_1);
-                    application.android.off(application.AndroidApplication.activityStoppedEvent, unsubscribe_1);
-                    application.android.off(application.AndroidApplication.activityDestroyedEvent, unsubscribe_1);
+                    frame_common_1.application.android.off(frame_common_1.application.AndroidApplication.activityResumedEvent, resume_1);
+                    frame_common_1.application.android.off(frame_common_1.application.AndroidApplication.activityStoppedEvent, unsubscribe_1);
+                    frame_common_1.application.android.off(frame_common_1.application.AndroidApplication.activityDestroyedEvent, unsubscribe_1);
                 };
-                if (trace.enabled) {
-                    trace.write("Frame._processNavigationContext: Subscribe for Activity.Resumed", trace.categories.Navigation);
+                if (frame_common_1.traceEnabled()) {
+                    frame_common_1.traceWrite("Frame._processNavigationContext: Subscribe for Activity.Resumed", frame_common_1.traceCategories.Navigation);
                 }
-                application.android.on(application.AndroidApplication.activityResumedEvent, resume_1);
-                application.android.on(application.AndroidApplication.activityStoppedEvent, unsubscribe_1);
-                application.android.on(application.AndroidApplication.activityDestroyedEvent, unsubscribe_1);
+                frame_common_1.application.android.on(frame_common_1.application.AndroidApplication.activityResumedEvent, resume_1);
+                frame_common_1.application.android.on(frame_common_1.application.AndroidApplication.activityStoppedEvent, unsubscribe_1);
+                frame_common_1.application.android.on(frame_common_1.application.AndroidApplication.activityDestroyedEvent, unsubscribe_1);
                 return;
             }
         }
         _super.prototype._processNavigationContext.call(this, navigationContext);
     };
     return Frame;
-}(frameCommon.Frame));
+}(frame_common_1.FrameBase));
 exports.Frame = Frame;
 var framesCounter = 0;
 var framesCache = new Array();
@@ -369,6 +412,7 @@ var AndroidFrame = (function (_super) {
             if (activity) {
                 return activity;
             }
+            // traverse the parent chain for an ancestor Frame
             var currView = this._owner.parent;
             while (currView) {
                 if (currView instanceof Frame) {
@@ -402,10 +446,9 @@ var AndroidFrame = (function (_super) {
             if (activity) {
                 return activity;
             }
-            var stack = frameCommon.stack(), length = stack.length, i = length - 1, frame;
-            for (i; i >= 0; i--) {
-                frame = stack[i];
-                activity = frame.android.activity;
+            var frames = frame_common_1.stack();
+            for (var length_1 = frames.length, i = length_1 - 1; i >= 0; i--) {
+                activity = frames[i].android.activity;
                 if (activity) {
                     return activity;
                 }
@@ -444,6 +487,7 @@ var AndroidFrame = (function (_super) {
         if (!this.activity) {
             return false;
         }
+        // can go back only if it is not the main one.
         return this.activity.getIntent().getAction() !== android.content.Intent.ACTION_MAIN;
     };
     AndroidFrame.prototype.fragmentForPage = function (page) {
@@ -458,25 +502,25 @@ var AndroidFrame = (function (_super) {
         return undefined;
     };
     return AndroidFrame;
-}(observable_1.Observable));
+}(frame_common_1.Observable));
 function findPageForFragment(fragment, frame) {
     var fragmentTag = fragment.getTag();
     var page;
     var entry;
-    if (trace.enabled) {
-        trace.write("Finding page for " + fragmentTag + ".", trace.categories.NativeLifecycle);
+    if (frame_common_1.traceEnabled()) {
+        frame_common_1.traceWrite("Finding page for " + fragmentTag + ".", frame_common_1.traceCategories.NativeLifecycle);
     }
-    if (fragmentTag === pages.DIALOG_FRAGMENT_TAG) {
-        if (trace.enabled) {
-            trace.write("No need to find page for dialog fragment.", trace.categories.NativeLifecycle);
+    if (fragmentTag === constants_1.DIALOG_FRAGMENT_TAG) {
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("No need to find page for dialog fragment.", frame_common_1.traceCategories.NativeLifecycle);
         }
         return;
     }
     if (frame._currentEntry && frame._currentEntry.fragmentTag === fragmentTag) {
         page = frame.currentPage;
         entry = frame._currentEntry;
-        if (trace.enabled) {
-            trace.write("Current page matches fragment " + fragmentTag + ".", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("Current page matches fragment " + fragmentTag + ".", frame_common_1.traceCategories.NativeLifecycle);
         }
     }
     else {
@@ -489,8 +533,8 @@ function findPageForFragment(fragment, frame) {
         }
         if (entry) {
             page = entry.resolvedPage;
-            if (trace.enabled) {
-                trace.write("Found " + page + " for " + fragmentTag, trace.categories.NativeLifecycle);
+            if (frame_common_1.traceEnabled()) {
+                frame_common_1.traceWrite("Found " + page + " for " + fragmentTag, frame_common_1.traceCategories.NativeLifecycle);
             }
         }
     }
@@ -504,12 +548,15 @@ function findPageForFragment(fragment, frame) {
     }
 }
 function startActivity(activity, frameId) {
+    // TODO: Implicitly, we will open the same activity type as the current one
     var intent = new android.content.Intent(activity, activity.getClass());
     intent.setAction(android.content.Intent.ACTION_DEFAULT);
     intent.putExtra(INTENT_EXTRA, frameId);
+    // TODO: Put the navigation context (if any) in the intent
     activity.startActivity(intent);
 }
 function getFrameById(frameId) {
+    // Find the frame for this activity.
     for (var i = 0; i < framesCache.length; i++) {
         var aliveFrame = framesCache[i].get();
         if (aliveFrame && aliveFrame.frameId === frameId) {
@@ -521,6 +568,7 @@ function getFrameById(frameId) {
 var animationFixed;
 function ensureAnimationFixed() {
     if (!animationFixed) {
+        // android.os.Build.VERSION.KITKAT but we don't have definition for it
         animationFixed = android.os.Build.VERSION.SDK_INT >= 19 ? 1 : -1;
     }
 }
@@ -528,6 +576,7 @@ function ensureFragmentClass() {
     if (fragmentClass) {
         return;
     }
+    // this require will apply the FragmentClass implementation 
     require("ui/frame/fragment");
     if (!fragmentClass) {
         throw new Error("Failed to initialize the extended android.app.Fragment class");
@@ -545,8 +594,8 @@ var FragmentCallbacksImplementation = (function () {
     function FragmentCallbacksImplementation() {
     }
     FragmentCallbacksImplementation.prototype.onHiddenChanged = function (fragment, hidden, superFunc) {
-        if (trace.enabled) {
-            trace.write(fragment + ".onHiddenChanged(" + hidden + ")", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite(fragment + ".onHiddenChanged(" + hidden + ")", frame_common_1.traceCategories.NativeLifecycle);
         }
         superFunc.call(fragment, hidden);
         if (hidden) {
@@ -576,16 +625,18 @@ var FragmentCallbacksImplementation = (function () {
         if (!animator) {
             animator = superFunc.call(fragment, transit, enter, nextAnim);
         }
-        if (trace.enabled) {
-            trace.write(fragment + ".onCreateAnimator(" + transit + ", " + (enter ? "enter" : "exit") + ", " + nextAnimString + "): " + animator, trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite(fragment + ".onCreateAnimator(" + transit + ", " + (enter ? "enter" : "exit") + ", " + nextAnimString + "): " + animator, frame_common_1.traceCategories.NativeLifecycle);
         }
         return animator;
     };
     FragmentCallbacksImplementation.prototype.onCreate = function (fragment, savedInstanceState, superFunc) {
-        if (trace.enabled) {
-            trace.write(fragment + ".onCreate(" + savedInstanceState + ")", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite(fragment + ".onCreate(" + savedInstanceState + ")", frame_common_1.traceCategories.NativeLifecycle);
         }
         superFunc.call(fragment, savedInstanceState);
+        // There is no entry set to the fragment, so this must be destroyed fragment that was recreated by Android.
+        // We should find its corresponding page in our backstack and set it manually.
         if (!this.entry) {
             var frameId = fragment.getArguments().getInt(FRAMEID);
             var frame = getFrameById(frameId);
@@ -599,23 +650,30 @@ var FragmentCallbacksImplementation = (function () {
         }
     };
     FragmentCallbacksImplementation.prototype.onCreateView = function (fragment, inflater, container, savedInstanceState, superFunc) {
-        if (trace.enabled) {
-            trace.write(fragment + ".onCreateView(inflater, container, " + savedInstanceState + ")", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite(fragment + ".onCreateView(inflater, container, " + savedInstanceState + ")", frame_common_1.traceCategories.NativeLifecycle);
         }
         var entry = this.entry;
         var page = entry.resolvedPage;
-        if (savedInstanceState && savedInstanceState.getBoolean(HIDDEN, false)) {
-            fragment.getFragmentManager().beginTransaction().hide(fragment).commit();
-            page._onAttached(fragment.getActivity());
+        try {
+            if (savedInstanceState && savedInstanceState.getBoolean(HIDDEN, false)) {
+                fragment.getFragmentManager().beginTransaction().hide(fragment).commit();
+                this.frame._addView(page);
+            }
+            else {
+                onFragmentShown(fragment);
+            }
         }
-        else {
-            onFragmentShown(fragment);
+        catch (ex) {
+            var label = new android.widget.TextView(container.getContext());
+            label.setText(ex.message + ", " + ex.stackTrace);
+            return label;
         }
         return page._nativeView;
     };
     FragmentCallbacksImplementation.prototype.onSaveInstanceState = function (fragment, outState, superFunc) {
-        if (trace.enabled) {
-            trace.write(fragment + ".onSaveInstanceState(" + outState + ")", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite(fragment + ".onSaveInstanceState(" + outState + ")", frame_common_1.traceCategories.NativeLifecycle);
         }
         superFunc.call(fragment, outState);
         if (fragment.isHidden()) {
@@ -623,15 +681,16 @@ var FragmentCallbacksImplementation = (function () {
         }
     };
     FragmentCallbacksImplementation.prototype.onDestroyView = function (fragment, superFunc) {
-        if (trace.enabled) {
-            trace.write(fragment + ".onDestroyView()", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite(fragment + ".onDestroyView()", frame_common_1.traceCategories.NativeLifecycle);
         }
         superFunc.call(fragment);
+        // Detaching the page has been move in onFragmentHidden due to transitions.
         onFragmentHidden(fragment, true);
     };
     FragmentCallbacksImplementation.prototype.onDestroy = function (fragment, superFunc) {
-        if (trace.enabled) {
-            trace.write(fragment + ".onDestroy()", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite(fragment + ".onDestroy()", frame_common_1.traceCategories.NativeLifecycle);
         }
         superFunc.call(fragment);
     };
@@ -644,48 +703,60 @@ var ActivityCallbacksImplementation = (function () {
     function ActivityCallbacksImplementation() {
     }
     ActivityCallbacksImplementation.prototype.onCreate = function (activity, savedInstanceState, superFunc) {
-        if (trace.enabled) {
-            trace.write("Activity.onCreate(" + savedInstanceState + ")", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("Activity.onCreate(" + savedInstanceState + ")", frame_common_1.traceCategories.NativeLifecycle);
         }
-        var app = application.android;
+        var app = frame_common_1.application.android;
         var intent = activity.getIntent();
-        if (application.onLaunch) {
-            application.onLaunch(intent);
-        }
-        var launchArgs = { eventName: application.launchEvent, object: app, android: intent };
-        application.notify(launchArgs);
+        var launchArgs = { eventName: frame_common_1.application.launchEvent, object: app, android: intent };
+        frame_common_1.application.notify(launchArgs);
         var frameId = -1;
         var rootView = launchArgs.root;
         var extras = intent.getExtras();
+        // We have extras when we call - new Frame().navigate();
+        // savedInstanceState is used when activity is recreated.
+        // NOTE: On API 23+ we get extras on first run.
+        // Check changed - first try to get frameId from Extras if not from saveInstanceState.
         if (extras) {
             frameId = extras.getInt(INTENT_EXTRA, -1);
         }
         if (savedInstanceState && frameId < 0) {
             frameId = savedInstanceState.getInt(INTENT_EXTRA, -1);
         }
+        // If we have frameId from extras - we are starting a new activity from navigation (e.g. new Frame().navigate()))
+        // Then we check if we have frameId from savedInstanceState - this happens when Activity is destroyed but app was not (e.g. suspend)
+        // Only then we fallback to the view returned from the event. This is done in order to have backwards compatibility (remove it for 2.0.0).
         var frame;
         var navParam;
         if (frameId >= 0) {
             rootView = getFrameById(frameId);
         }
         if (!rootView) {
-            navParam = application.mainEntry;
+            navParam = frame_common_1.application.mainEntry;
             if (!navParam) {
-                navParam = application.mainModule;
+                navParam = frame_common_1.application.mainModule;
             }
             if (navParam) {
                 frame = new Frame();
             }
             else {
+                // TODO: Throw an exception?
                 throw new Error("A Frame must be used to navigate to a Page.");
             }
             rootView = frame;
         }
+        // If there is savedInstanceState this call will recreate all fragments that were previously in the navigation.
+        // We take care of associating them with a Page from our backstack in the onAttachFragment callback.
+        // If there is savedInstanceState and activityInitialized is false we are restarted but process was killed.
+        // For now we treat it like first run (e.g. we are not passing savedInstanceState so no fragments are being restored).
+        // When we add support for application save/load state - revise this logic.
         var isRestart = !!savedInstanceState && activityInitialized;
         superFunc.call(activity, isRestart ? savedInstanceState : null);
         this._rootView = rootView;
-        rootView._onAttached(activity);
+        // Initialize native visual tree;
+        rootView._setupUI(activity);
         activity.setContentView(rootView._nativeView, new org.nativescript.widgets.CommonLayoutParams());
+        // frameId is negative w
         if (frame) {
             frame.navigate(navParam);
         }
@@ -700,8 +771,8 @@ var ActivityCallbacksImplementation = (function () {
     };
     ActivityCallbacksImplementation.prototype.onStart = function (activity, superFunc) {
         superFunc.call(activity);
-        if (trace.enabled) {
-            trace.write("NativeScriptActivity.onStart();", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("NativeScriptActivity.onStart();", frame_common_1.traceCategories.NativeLifecycle);
         }
         var rootView = this._rootView;
         if (rootView && !rootView.isLoaded) {
@@ -710,8 +781,8 @@ var ActivityCallbacksImplementation = (function () {
     };
     ActivityCallbacksImplementation.prototype.onStop = function (activity, superFunc) {
         superFunc.call(activity);
-        if (trace.enabled) {
-            trace.write("NativeScriptActivity.onStop();", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("NativeScriptActivity.onStop();", frame_common_1.traceCategories.NativeLifecycle);
         }
         var rootView = this._rootView;
         if (rootView && rootView.isLoaded) {
@@ -721,43 +792,40 @@ var ActivityCallbacksImplementation = (function () {
     ActivityCallbacksImplementation.prototype.onDestroy = function (activity, superFunc) {
         var rootView = this._rootView;
         if (rootView && rootView._context) {
-            rootView._onDetached(true);
+            rootView._tearDownUI(true);
         }
         superFunc.call(activity);
-        if (trace.enabled) {
-            trace.write("NativeScriptActivity.onDestroy();", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("NativeScriptActivity.onDestroy();", frame_common_1.traceCategories.NativeLifecycle);
         }
-        var exitArgs = { eventName: application.exitEvent, object: application.android, android: activity };
-        application.notify(exitArgs);
-        if (application.onExit) {
-            application.onExit();
-        }
+        var exitArgs = { eventName: frame_common_1.application.exitEvent, object: frame_common_1.application.android, android: activity };
+        frame_common_1.application.notify(exitArgs);
     };
     ActivityCallbacksImplementation.prototype.onBackPressed = function (activity, superFunc) {
-        if (trace.enabled) {
-            trace.write("NativeScriptActivity.onBackPressed;", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("NativeScriptActivity.onBackPressed;", frame_common_1.traceCategories.NativeLifecycle);
         }
         var args = {
             eventName: "activityBackPressed",
-            object: application.android,
+            object: frame_common_1.application.android,
             activity: activity,
-            cancel: false,
+            cancel: false
         };
-        application.android.notify(args);
+        frame_common_1.application.android.notify(args);
         if (args.cancel) {
             return;
         }
-        if (!frameCommon.goBack()) {
+        if (!frame_common_1.goBack()) {
             superFunc.call(activity);
         }
     };
     ActivityCallbacksImplementation.prototype.onRequestPermissionsResult = function (activity, requestCode, permissions, grantResults, superFunc) {
-        if (trace.enabled) {
-            trace.write("NativeScriptActivity.onRequestPermissionsResult;", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("NativeScriptActivity.onRequestPermissionsResult;", frame_common_1.traceCategories.NativeLifecycle);
         }
-        application.android.notify({
+        frame_common_1.application.android.notify({
             eventName: "activityRequestPermissions",
-            object: application.android,
+            object: frame_common_1.application.android,
             activity: activity,
             requestCode: requestCode,
             permissions: permissions,
@@ -766,16 +834,12 @@ var ActivityCallbacksImplementation = (function () {
     };
     ActivityCallbacksImplementation.prototype.onActivityResult = function (activity, requestCode, resultCode, data, superFunc) {
         superFunc.call(activity, requestCode, resultCode, data);
-        if (trace.enabled) {
-            trace.write("NativeScriptActivity.onActivityResult(" + requestCode + ", " + resultCode + ", " + data + ")", trace.categories.NativeLifecycle);
+        if (frame_common_1.traceEnabled()) {
+            frame_common_1.traceWrite("NativeScriptActivity.onActivityResult(" + requestCode + ", " + resultCode + ", " + data + ")", frame_common_1.traceCategories.NativeLifecycle);
         }
-        var result = application.android.onActivityResult;
-        if (result) {
-            result(requestCode, resultCode, data);
-        }
-        application.android.notify({
+        frame_common_1.application.android.notify({
             eventName: "activityResult",
-            object: application.android,
+            object: frame_common_1.application.android,
             activity: activity,
             requestCode: requestCode,
             resultCode: resultCode,
@@ -792,4 +856,3 @@ function setFragmentCallbacks(fragment) {
     fragment[CALLBACKS] = new FragmentCallbacksImplementation();
 }
 exports.setFragmentCallbacks = setFragmentCallbacks;
-//# sourceMappingURL=frame.js.map

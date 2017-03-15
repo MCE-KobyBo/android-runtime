@@ -1,3 +1,4 @@
+"use strict";
 var epsilon = 1E-05;
 function areClose(value1, value2) {
     return (Math.abs(value1 - value2) < epsilon);
@@ -27,4 +28,3 @@ function notNegative(value) {
     return value >= 0;
 }
 exports.notNegative = notNegative;
-//# sourceMappingURL=number-utils.js.map

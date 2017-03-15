@@ -1,3 +1,4 @@
+"use strict";
 function isString(value) {
     return typeof value === "string" || value instanceof String;
 }
@@ -25,7 +26,7 @@ function isObject(value) {
 }
 exports.isObject = isObject;
 function isUndefined(value) {
-    return typeof value === "undefined";
+    return value === undefined;
 }
 exports.isUndefined = isUndefined;
 function isDefined(value) {
@@ -33,7 +34,7 @@ function isDefined(value) {
 }
 exports.isDefined = isDefined;
 function isNullOrUndefined(value) {
-    return (typeof value === "undefined") || (value === null);
+    return value === undefined || value === null;
 }
 exports.isNullOrUndefined = isNullOrUndefined;
 function verifyCallback(value) {
@@ -43,7 +44,7 @@ function verifyCallback(value) {
 }
 exports.verifyCallback = verifyCallback;
 var classInfosMap = new Map();
-var funcNameRegex = /function ([_a-zA-Z0-9]{1,})\(/;
+var funcNameRegex = /function (.{1,})\(/;
 function getClass(object) {
     return getClassInfo(object).name;
 }
@@ -87,6 +88,7 @@ var ClassInfo = (function () {
         get: function () {
             if (isUndefined(this._baseClassInfo)) {
                 this._baseClassInfo = ClassInfo._getBase(this);
+                // While extending some classes for platform specific versions results in duplicate class types in hierarchy.
                 if (this._baseClassInfo && this._baseClassInfo.name === this.name) {
                     this._baseClassInfo = ClassInfo._getBase(this._baseClassInfo);
                 }
@@ -111,4 +113,3 @@ function toUIString(obj) {
     return isNullOrUndefined(obj) ? "" : obj + "";
 }
 exports.toUIString = toUIString;
-//# sourceMappingURL=types.js.map

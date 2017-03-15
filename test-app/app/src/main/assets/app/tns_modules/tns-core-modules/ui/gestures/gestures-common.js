@@ -1,4 +1,4 @@
-var definition = require("ui/gestures");
+"use strict";
 (function (GestureTypes) {
     GestureTypes[GestureTypes["tap"] = 1] = "tap";
     GestureTypes[GestureTypes["doubleTap"] = 2] = "doubleTap";
@@ -31,102 +31,95 @@ var TouchAction;
     TouchAction.move = "move";
     TouchAction.cancel = "cancel";
 })(TouchAction = exports.TouchAction || (exports.TouchAction = {}));
-function observe(target, type, callback, context) {
-    var observer = new definition.GesturesObserver(target, callback, context);
-    observer.observe(type);
-    return observer;
-}
-exports.observe = observe;
 function toString(type, separator) {
     var types = new Array();
-    if (type & definition.GestureTypes.tap) {
+    if (type & GestureTypes.tap) {
         types.push("tap");
     }
-    if (type & definition.GestureTypes.doubleTap) {
+    if (type & GestureTypes.doubleTap) {
         types.push("doubleTap");
     }
-    if (type & definition.GestureTypes.pinch) {
+    if (type & GestureTypes.pinch) {
         types.push("pinch");
     }
-    if (type & definition.GestureTypes.pan) {
+    if (type & GestureTypes.pan) {
         types.push("pan");
     }
-    if (type & definition.GestureTypes.swipe) {
+    if (type & GestureTypes.swipe) {
         types.push("swipe");
     }
-    if (type & definition.GestureTypes.rotation) {
+    if (type & GestureTypes.rotation) {
         types.push("rotation");
     }
-    if (type & definition.GestureTypes.longPress) {
+    if (type & GestureTypes.longPress) {
         types.push("longPress");
     }
-    if (type & definition.GestureTypes.touch) {
+    if (type & GestureTypes.touch) {
         types.push("touch");
     }
     return types.join(separator);
 }
 exports.toString = toString;
+// NOTE: toString could return the text of multiple GestureTypes.
+// Souldn't fromString do split on separator and return multiple GestureTypes?
 function fromString(type) {
     var t = type.trim().toLowerCase();
     if (t === "tap") {
-        return definition.GestureTypes.tap;
+        return GestureTypes.tap;
     }
     else if (t === "doubletap") {
-        return definition.GestureTypes.doubleTap;
+        return GestureTypes.doubleTap;
     }
     else if (t === "pinch") {
-        return definition.GestureTypes.pinch;
+        return GestureTypes.pinch;
     }
     else if (t === "pan") {
-        return definition.GestureTypes.pan;
+        return GestureTypes.pan;
     }
     else if (t === "swipe") {
-        return definition.GestureTypes.swipe;
+        return GestureTypes.swipe;
     }
     else if (t === "rotation") {
-        return definition.GestureTypes.rotation;
+        return GestureTypes.rotation;
     }
     else if (t === "longpress") {
-        return definition.GestureTypes.longPress;
+        return GestureTypes.longPress;
     }
     else if (t === "touch") {
-        return definition.GestureTypes.touch;
+        return GestureTypes.touch;
     }
     return undefined;
 }
 exports.fromString = fromString;
-var GesturesObserver = (function () {
-    function GesturesObserver(target, callback, context) {
+var GesturesObserverBase = (function () {
+    function GesturesObserverBase(target, callback, context) {
         this._target = target;
         this._callback = callback;
         this._context = context;
     }
-    Object.defineProperty(GesturesObserver.prototype, "callback", {
+    Object.defineProperty(GesturesObserverBase.prototype, "callback", {
         get: function () {
             return this._callback;
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(GesturesObserver.prototype, "target", {
+    Object.defineProperty(GesturesObserverBase.prototype, "target", {
         get: function () {
             return this._target;
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(GesturesObserver.prototype, "context", {
+    Object.defineProperty(GesturesObserverBase.prototype, "context", {
         get: function () {
             return this._context;
         },
         enumerable: true,
         configurable: true
     });
-    GesturesObserver.prototype.androidOnTouchEvent = function (motionEvent) {
-    };
-    GesturesObserver.prototype.observe = function (type) {
-    };
-    GesturesObserver.prototype.disconnect = function () {
+    GesturesObserverBase.prototype.disconnect = function () {
+        // remove gesture observer from map
         if (this.target) {
             var list = this.target.getGestureObservers(this.type);
             if (list && list.length > 0) {
@@ -144,7 +137,6 @@ var GesturesObserver = (function () {
         this._callback = null;
         this._context = null;
     };
-    return GesturesObserver;
+    return GesturesObserverBase;
 }());
-exports.GesturesObserver = GesturesObserver;
-//# sourceMappingURL=gestures-common.js.map
+exports.GesturesObserverBase = GesturesObserverBase;

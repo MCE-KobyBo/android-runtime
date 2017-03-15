@@ -1,63 +1,53 @@
-var common = require("./button-common");
-var style = require("ui/styling/style");
-var text_base_styler_1 = require("ui/text-base/text-base-styler");
-var platform_1 = require("platform");
-var gestures_1 = require("ui/gestures");
-var view_1 = require("ui/core/view");
-var styleHandlersInitialized;
-global.moduleMerge(common, exports);
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var button_common_1 = require("./button-common");
+var gestures_1 = require("../gestures");
+__export(require("./button-common"));
+var ClickListener;
+function initializeClickListener() {
+    if (ClickListener) {
+        return;
+    }
+    var ClickListenerImpl = (function (_super) {
+        __extends(ClickListenerImpl, _super);
+        function ClickListenerImpl(owner) {
+            _super.call(this);
+            this.owner = owner;
+            return global.__native(this);
+        }
+        ClickListenerImpl.prototype.onClick = function (v) {
+            this.owner._emit(button_common_1.ButtonBase.tapEvent);
+        };
+        ClickListenerImpl = __decorate([
+            Interfaces([android.view.View.OnClickListener])
+        ], ClickListenerImpl);
+        return ClickListenerImpl;
+    }(java.lang.Object));
+    ClickListener = ClickListenerImpl;
+}
 var Button = (function (_super) {
     __extends(Button, _super);
     function Button() {
-        _super.call(this);
-        this._isPressed = false;
-        if (!styleHandlersInitialized) {
-            styleHandlersInitialized = true;
-            ButtonStyler.registerHandlers();
-        }
+        _super.apply(this, arguments);
     }
-    Object.defineProperty(Button.prototype, "android", {
-        get: function () {
-            return this._android;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Button.prototype._createUI = function () {
-        var that = new WeakRef(this);
-        this._android = new android.widget.Button(this._context);
-        this._android.setOnClickListener(new android.view.View.OnClickListener({
-            get owner() {
-                return that.get();
-            },
-            onClick: function (v) {
-                if (this.owner) {
-                    this.owner._emit(common.Button.tapEvent);
-                }
-            }
-        }));
-    };
-    Button.prototype._onTextPropertyChanged = function (data) {
-        if (this.android) {
-            this.android.setText(data.newValue + "");
-        }
-    };
-    Button.prototype._setFormattedTextPropertyToNative = function (value) {
-        var newText = value ? value._formattedText : null;
-        if (this.android) {
-            if (newText) {
-                if (!this._transformationMethod) {
-                    this._transformationMethod = this.android.getTransformationMethod();
-                }
-                this.android.setTransformationMethod(null);
-            }
-            else {
-                if (this._transformationMethod && !this.android.getTransformationMethod()) {
-                    this.android.setTransformationMethod(this._transformationMethod);
-                }
-            }
-            this.android.setText(newText);
-        }
+    Button.prototype._createNativeView = function () {
+        initializeClickListener();
+        var button = this._button = new android.widget.Button(this._context);
+        button.setOnClickListener(new ClickListener(this));
+        return button;
     };
     Button.prototype._updateHandler = function (subscribe) {
         var _this = this;
@@ -78,28 +68,83 @@ var Button = (function (_super) {
             this.off(gestures_1.GestureTypes.touch, this._highlightedHandler);
         }
     };
+    Object.defineProperty(Button.prototype, button_common_1.paddingTopProperty.native, {
+        get: function () {
+            return { value: this._defaultPaddingTop, unit: "px" };
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Button.prototype, button_common_1.paddingTopProperty.native, {
+        set: function (value) {
+            org.nativescript.widgets.ViewHelper.setPaddingTop(this.nativeView, button_common_1.Length.toDevicePixels(value, 0) + button_common_1.Length.toDevicePixels(this.style.borderTopWidth, 0));
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Button.prototype, button_common_1.paddingRightProperty.native, {
+        get: function () {
+            return { value: this._defaultPaddingRight, unit: "px" };
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Button.prototype, button_common_1.paddingRightProperty.native, {
+        set: function (value) {
+            org.nativescript.widgets.ViewHelper.setPaddingRight(this.nativeView, button_common_1.Length.toDevicePixels(value, 0) + button_common_1.Length.toDevicePixels(this.style.borderRightWidth, 0));
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Button.prototype, button_common_1.paddingBottomProperty.native, {
+        get: function () {
+            return { value: this._defaultPaddingBottom, unit: "px" };
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Button.prototype, button_common_1.paddingBottomProperty.native, {
+        set: function (value) {
+            org.nativescript.widgets.ViewHelper.setPaddingBottom(this.nativeView, button_common_1.Length.toDevicePixels(value, 0) + button_common_1.Length.toDevicePixels(this.style.borderBottomWidth, 0));
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Button.prototype, button_common_1.paddingLeftProperty.native, {
+        get: function () {
+            return { value: this._defaultPaddingLeft, unit: "px" };
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Button.prototype, button_common_1.paddingLeftProperty.native, {
+        set: function (value) {
+            org.nativescript.widgets.ViewHelper.setPaddingLeft(this.nativeView, button_common_1.Length.toDevicePixels(value, 0) + button_common_1.Length.toDevicePixels(this.style.borderLeftWidth, 0));
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Button.prototype, button_common_1.zIndexProperty.native, {
+        get: function () {
+            return org.nativescript.widgets.ViewHelper.getZIndex(this.nativeView);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Button.prototype, button_common_1.zIndexProperty.native, {
+        set: function (value) {
+            org.nativescript.widgets.ViewHelper.setZIndex(this.nativeView, value);
+            // API >= 21
+            if (this.nativeView.setStateListAnimator) {
+                this.nativeView.setStateListAnimator(null);
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
     __decorate([
-        view_1.PseudoClassHandler("normal", "highlighted", "pressed", "active")
-    ], Button.prototype, "_updateHandler", null);
+        button_common_1.PseudoClassHandler("normal", "highlighted", "pressed", "active")
+    ], Button.prototype, "_updateHandler");
     return Button;
-}(common.Button));
+}(button_common_1.ButtonBase));
 exports.Button = Button;
-var ButtonStyler = (function () {
-    function ButtonStyler() {
-    }
-    ButtonStyler.registerHandlers = function () {
-        var TextBaseStyler = text_base_styler_1.TextBaseStyler;
-        style.registerHandler(style.colorProperty, new style.StylePropertyChangedHandler(TextBaseStyler.setColorProperty, TextBaseStyler.resetColorProperty, TextBaseStyler.getNativeColorValue), "Button");
-        style.registerHandler(style.fontInternalProperty, new style.StylePropertyChangedHandler(TextBaseStyler.setFontInternalProperty, TextBaseStyler.resetFontInternalProperty, TextBaseStyler.getNativeFontInternalValue), "Button");
-        style.registerHandler(style.textAlignmentProperty, new style.StylePropertyChangedHandler(TextBaseStyler.setTextAlignmentProperty, TextBaseStyler.resetTextAlignmentProperty, TextBaseStyler.getNativeTextAlignmentValue), "Button");
-        style.registerHandler(style.textDecorationProperty, new style.StylePropertyChangedHandler(TextBaseStyler.setTextDecorationProperty, TextBaseStyler.resetTextDecorationProperty), "Button");
-        style.registerHandler(style.textTransformProperty, new style.StylePropertyChangedHandler(TextBaseStyler.setTextTransformProperty, TextBaseStyler.resetTextTransformProperty), "Button");
-        style.registerHandler(style.whiteSpaceProperty, new style.StylePropertyChangedHandler(TextBaseStyler.setWhiteSpaceProperty, TextBaseStyler.resetWhiteSpaceProperty), "Button");
-        if (parseInt(platform_1.device.sdkVersion, 10) >= 21) {
-            style.registerHandler(style.letterSpacingProperty, new style.StylePropertyChangedHandler(TextBaseStyler.setLetterSpacingProperty, TextBaseStyler.resetLetterSpacingProperty, TextBaseStyler.getLetterSpacingProperty), "Button");
-        }
-    };
-    return ButtonStyler;
-}());
-exports.ButtonStyler = ButtonStyler;
-//# sourceMappingURL=button.js.map

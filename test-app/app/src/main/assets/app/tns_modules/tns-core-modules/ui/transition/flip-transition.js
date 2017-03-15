@@ -1,4 +1,11 @@
-var transition_1 = require("ui/transition");
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var transition_1 = require("./transition");
+//http://developer.android.com/training/animation/cardflip.html
 var FlipTransition = (function (_super) {
     __extends(FlipTransition, _super);
     function FlipTransition(direction, duration, curve) {
@@ -101,4 +108,3 @@ var FlipTransition = (function (_super) {
     return FlipTransition;
 }(transition_1.Transition));
 exports.FlipTransition = FlipTransition;
-//# sourceMappingURL=flip-transition.js.map

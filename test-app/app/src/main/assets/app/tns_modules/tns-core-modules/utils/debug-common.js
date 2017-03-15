@@ -1,4 +1,5 @@
-var file_system_1 = require("file-system");
+"use strict";
+var file_system_1 = require("../file-system");
 exports.debug = true;
 var applicationRootPath;
 function ensureAppRootPath() {
@@ -47,4 +48,3 @@ var Source = (function () {
     return Source;
 }());
 exports.Source = Source;
-//# sourceMappingURL=debug-common.js.map

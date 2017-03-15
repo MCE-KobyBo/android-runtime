@@ -1,3 +1,5 @@
+"use strict";
+// regex that contains all symbols applicable for expression used to AI detect an expression.
 var expressionSymbolsRegex = /[\+\-\*\/%\?:<>=!\|&\(\)^~]/;
 var bindingConstants;
 (function (bindingConstants) {
@@ -14,6 +16,7 @@ var bindingConstants;
 ;
 var hasEqualSignRegex = /=+/;
 var equalSignComparisionOperatorsRegex = /(==|===|>=|<=|!=|!==)/;
+// this regex is used to search for all instaces of '$parents[]' within an expression
 exports.parentsRegex = /\$parents\s*\[\s*(['"]*)\w*\1\s*\]/g;
 function isNamedParam(value) {
     var equalSignIndex = value.search(hasEqualSignRegex);
@@ -105,6 +108,7 @@ function isExpression(expression) {
         var parentsMatches = expression.match(exports.parentsRegex);
         if (parentsMatches) {
             var restOfExpression = expression.substr(expression.indexOf(parentsMatches[0]) + parentsMatches[0].length);
+            // no more expression regognition symbols so it is safe for sourceProperty
             if (!(restOfExpression.search(expressionSymbolsRegex) > -1)) {
                 return false;
             }
@@ -144,6 +148,7 @@ function getBindingOptions(name, value) {
         var result = {};
         result[namedParamConstants.propName] = prop;
         if (prop === bindingConstants.twoWay) {
+            // create a real boolean value
             if (value === "true") {
                 result[namedParamConstants.propValue] = true;
             }
@@ -178,4 +183,3 @@ var xmlBindingProperties = {
     source: true,
     defaultProperty: bindingConstants.sourceProperty
 };
-//# sourceMappingURL=binding-builder.js.map

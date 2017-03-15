@@ -1,23 +1,22 @@
-var dependencyObservable = require("ui/core/dependency-observable");
-var proxy = require("ui/core/proxy");
-var view = require("ui/core/view");
-var HtmlView = (function (_super) {
-    __extends(HtmlView, _super);
-    function HtmlView() {
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
+}
+var view_1 = require("../core/view");
+__export(require("../core/view"));
+var HtmlViewBase = (function (_super) {
+    __extends(HtmlViewBase, _super);
+    function HtmlViewBase() {
         _super.apply(this, arguments);
     }
-    Object.defineProperty(HtmlView.prototype, "html", {
-        get: function () {
-            return this._getValue(HtmlView.htmlProperty);
-        },
-        set: function (value) {
-            this._setValue(HtmlView.htmlProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    HtmlView.htmlProperty = new dependencyObservable.Property("html", "HtmlView", new proxy.PropertyMetadata(false, dependencyObservable.PropertyMetadataSettings.AffectsLayout));
-    return HtmlView;
-}(view.View));
-exports.HtmlView = HtmlView;
-//# sourceMappingURL=html-view-common.js.map
+    return HtmlViewBase;
+}(view_1.View));
+exports.HtmlViewBase = HtmlViewBase;
+// TODO: Can we use Label.ios optimization for affectsLayout???
+exports.htmlProperty = new view_1.Property({ name: "html", defaultValue: "", affectsLayout: true });
+exports.htmlProperty.register(HtmlViewBase);

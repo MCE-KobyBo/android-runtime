@@ -1,5 +1,6 @@
-var http = require("http");
-var types = require("utils/types");
+"use strict";
+var http = require("../http");
+var types = require("../utils/types");
 var XMLHttpRequestResponseType;
 (function (XMLHttpRequestResponseType) {
     XMLHttpRequestResponseType.empty = "";
@@ -57,6 +58,9 @@ var XMLHttpRequest = (function () {
         this._status = null;
         if (types.isDefined(this._options)) {
             if (types.isString(data) && this._options.method !== 'GET') {
+                //The Android Java HTTP lib throws an exception if we provide a
+                //a request body for GET requests, so we avoid doing that.
+                //Browser implementations silently ignore it as well.
                 this._options.content = data;
             }
             else if (data instanceof FormData) {
@@ -91,6 +95,8 @@ var XMLHttpRequest = (function () {
     };
     XMLHttpRequest.prototype._addToStringOnResponse = function () {
         var _this = this;
+        // Add toString() method to ease debugging and
+        // make Angular2 response.text() method work properly.
         if (types.isObject(this.response)) {
             Object.defineProperty(this._response, "toString", {
                 configurable: true,
@@ -159,6 +165,7 @@ var XMLHttpRequest = (function () {
         }
         var result = "";
         for (var i in this._headers) {
+            // Cookie headers are excluded
             if (i !== "set-cookie" && i !== "set-cookie2") {
                 result += i + ": " + this._headers[i] + "\r\n";
             }
@@ -179,6 +186,7 @@ var XMLHttpRequest = (function () {
         return null;
     };
     XMLHttpRequest.prototype.overrideMimeType = function (mime) {
+        //
     };
     Object.defineProperty(XMLHttpRequest.prototype, "readyState", {
         get: function () {
@@ -320,4 +328,3 @@ var FormData = (function () {
     return FormData;
 }());
 exports.FormData = FormData;
-//# sourceMappingURL=xhr.js.map

@@ -1,19 +1,27 @@
-var types = require("utils/types");
-var http = require("http");
-var requestIdCounter = 0;
-var pendingRequests = {};
-var utils;
-
+"use strict";
 function getTimeStamp() {
     var d = new Date();
     return Math.round(d.getTime() / 1000);
 }
-
-function ensureUtils() {
-    if (!utils) {
-        utils = require("utils/utils");
+function mimeTypeToType(mimeType) {
+    var type = "Document";
+    if (mimeType.indexOf("image") === 0) {
+        type = "Image";
     }
+    else if (mimeType.indexOf("javascript") !== -1 || mimeType.indexOf("json") !== -1) {
+        type = "Script";
+    }
+    return type;
 }
+function parseJSON(source) {
+    var src = source.trim();
+    if (src.lastIndexOf(")") === src.length - 1) {
+        return JSON.parse(src.substring(src.indexOf("(") + 1, src.lastIndexOf(")")));
+    }
+    return JSON.parse(src);
+}
+var requestIdCounter = 0;
+var pendingRequests = {};
 var imageSource;
 function ensureImageSource() {
     if (!imageSource) {
@@ -33,6 +41,7 @@ function ensureCompleteCallback() {
     }
     completeCallback = new org.nativescript.widgets.Async.CompleteCallback({
         onComplete: function (result, context) {
+            // as a context we will receive the id of the request
             onRequestComplete(context, result);
         }
     });
@@ -44,6 +53,7 @@ function onRequestComplete(requestId, result) {
         callbacks.rejectCallback(new Error(result.error.toString()));
         return;
     }
+    // read the headers
     var headers = {};
     if (result.headers) {
         var jHeaders = result.headers;
@@ -52,61 +62,52 @@ function onRequestComplete(requestId, result) {
         var pair;
         for (i = 0; i < length; i++) {
             pair = jHeaders.get(i);
-            http.addHeader(headers, pair.key, pair.value);
+            addHeader(headers, pair.key, pair.value);
         }
     }
-
-    if (__inspector && __inspector.isConnected) {
-        var responseHeaders = {};
-        var len = result.headers ? result.headers.size() : 0;
-        for (var i = 0; i < len; i++) {
-            var kvp = result.headers.get(i);
-            responseHeaders[kvp.key] = kvp.value;
-        }
-        var type = "Document"
-        // TODO: FIX ME!
-        let hasTextContent = true;
-        if (leUrl.indexOf("image") != -1) {
-            hasTextContent = false;
-            type = "Image"
-        }
-        var responseObj = {
-            url: leUrl,
+    if (global.__inspector && global.__inspector.isConnected) {
+        var requestIdStr = requestId.toString();
+        // Content-Type and content-type are both common in headers spelling
+        var mimeType = headers["Content-Type"] || headers["content-type"];
+        var response = {
+            url: result.url || "",
             status: result.statusCode,
-            // TODO: Hard coded type
-            statusText: "OK",
-            headers: responseHeaders,
-            mimeType: "Document",
+            statusText: result.statusText || "",
+            headers: headers,
+            mimeType: mimeType,
             fromDiskCache: false
-        }
-        var responseReceivedObj = {
-            requestId: requestId,
-            // TODO: Hard coded type
-            type: type,
-            response: responseObj,
+        };
+        var responseData = {
+            requestId: requestIdStr,
+            type: mimeTypeToType(response.mimeType),
+            response: response,
             timeStamp: getTimeStamp()
-        }
-
-        __inspector.responseReceived(responseReceivedObj);
-        __inspector.loadingFinished({ requestId: requestId, timeStamp: getTimeStamp() });
-
-        var responseData;
+        };
+        global.__inspector.responseReceived(responseData);
+        global.__inspector.loadingFinished({ requestId: requestIdStr, timeStamp: getTimeStamp() });
+        var hasTextContent = responseData.type === "Document" || responseData.type === "Script";
+        var data = void 0;
         if (!hasTextContent) {
-            var bitmap = result.responseAsImage;
-            if (bitmap) {
-                var outputStream = new java.io.ByteArrayOutputStream();
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream);
-
-                var base64Image = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT);
-                responseData = base64Image
+            if (responseData.type === "Image") {
+                var bitmap = result.responseAsImage;
+                if (bitmap) {
+                    var outputStream = new java.io.ByteArrayOutputStream();
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream);
+                    var base64Image = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.DEFAULT);
+                    data = base64Image;
+                }
             }
-        } else {
-            responseData = result.responseAsString;
         }
-
-        __inspector.dataForRequestId({ requestId: requestId, data: responseData, hasTextContent: hasTextContent });
+        else {
+            data = result.responseAsString;
+        }
+        var successfulRequestData = {
+            requestId: requestIdStr,
+            data: data,
+            hasTextContent: hasTextContent
+        };
+        global.__inspector.dataForRequestId(successfulRequestData);
     }
-
     callbacks.resolveCallback({
         content: {
             raw: result.raw,
@@ -118,7 +119,7 @@ function onRequestComplete(requestId, result) {
                 else {
                     str = result.responseAsString;
                 }
-                if (types.isString(str)) {
+                if (typeof str === "string") {
                     return str;
                 }
                 else {
@@ -126,7 +127,6 @@ function onRequestComplete(requestId, result) {
                 }
             },
             toJSON: function (encoding) {
-                ensureUtils();
                 var str;
                 if (encoding) {
                     str = decodeResponse(result.raw, encoding);
@@ -134,7 +134,7 @@ function onRequestComplete(requestId, result) {
                 else {
                     str = result.responseAsString;
                 }
-                return utils.parseJSON(str);
+                return parseJSON(str);
             },
             toImage: function () {
                 ensureImageSource();
@@ -175,21 +175,21 @@ function onRequestComplete(requestId, result) {
     });
 }
 function buildJavaOptions(options) {
-    if (!types.isString(options.url)) {
+    if (typeof options.url !== "string") {
         throw new Error("Http request must provide a valid url.");
     }
     var javaOptions = new org.nativescript.widgets.Async.Http.RequestOptions();
     javaOptions.url = options.url;
-    if (types.isString(options.method)) {
+    if (typeof options.method === "string") {
         javaOptions.method = options.method;
     }
-    if (types.isString(options.content) || options.content instanceof FormData) {
+    if (typeof options.content === "string" || options.content instanceof FormData) {
         javaOptions.content = options.content.toString();
     }
-    if (types.isNumber(options.timeout)) {
+    if (typeof options.timeout === "number") {
         javaOptions.timeout = options.timeout;
     }
-    if (types.isBoolean(options.dontFollowRedirects)) {
+    if (typeof options.dontFollowRedirects === "boolean") {
         javaOptions.dontFollowRedirects = options.dontFollowRedirects;
     }
     if (options.headers) {
@@ -201,53 +201,48 @@ function buildJavaOptions(options) {
         javaOptions.headers = arrayList;
     }
     ensurePlatform();
+    // pass the maximum available image size to the request options in case we need a bitmap conversion
     var screen = platform.screen.mainScreen;
     javaOptions.screenWidth = screen.widthPixels;
     javaOptions.screenHeight = screen.heightPixels;
     return javaOptions;
 }
-var leUrl;
 function request(options) {
-    if (!types.isDefined(options)) {
+    if (options === undefined || options === null) {
+        // TODO: Shouldn't we throw an error here - defensive programming
         return;
     }
     return new Promise(function (resolve, reject) {
         try {
+            // initialize the options
             var javaOptions = buildJavaOptions(options);
+            if (global.__inspector && global.__inspector.isConnected) {
+                var request_1 = {
+                    url: options.url,
+                    method: options.method,
+                    headers: options.headers || {},
+                    postData: options.content ? options.content.toString() : ""
+                };
+                var requestData = {
+                    requestId: requestIdCounter.toString(),
+                    url: request_1.url,
+                    request: request_1,
+                    timeStamp: getTimeStamp(),
+                    type: "Document"
+                };
+                global.__inspector.requestWillBeSent(requestData);
+            }
+            // remember the callbacks so that we can use them when the CompleteCallback is called
             var callbacks = {
                 url: options.url,
                 resolveCallback: resolve,
                 rejectCallback: reject
             };
-
-            /////////
-            if (__inspector && __inspector.isConnected) {
-                leUrl = options.url;
-                var requestObj = {
-                    url: options.url,
-                    method: options.method,
-                    headers: options.headers || {}
-                }
-
-                if (options.content) {
-                    requestObj.postData = options.content.toString();
-                }
-
-                var requestWillBeSentObj = {
-                    requestId: requestIdCounter,
-                    url: requestObj.url,
-                    request: requestObj,
-                    timeStamp: getTimeStamp(),
-                    type: "Document"
-                };
-
-                __inspector.requestWillBeSent(requestWillBeSentObj);
-            }
-            /////////
-
             pendingRequests[requestIdCounter] = callbacks;
             ensureCompleteCallback();
+            //make the actual async call
             org.nativescript.widgets.Async.Http.MakeRequest(javaOptions, completeCallback, new java.lang.Integer(requestIdCounter));
+            // increment the id counter
             requestIdCounter++;
         }
         catch (ex) {
@@ -258,9 +253,22 @@ function request(options) {
 exports.request = request;
 function decodeResponse(raw, encoding) {
     var charsetName = "UTF-8";
-    if (encoding === 1) {
+    if (encoding === 1 /* GBK */) {
         charsetName = 'GBK';
     }
     return raw.toString(charsetName);
 }
-//# sourceMappingURL=http-request.js.map
+function addHeader(headers, key, value) {
+    if (!headers[key]) {
+        headers[key] = value;
+    }
+    else if (Array.isArray(headers[key])) {
+        headers[key].push(value);
+    }
+    else {
+        var values = [headers[key]];
+        values.push(value);
+        headers[key] = values;
+    }
+}
+exports.addHeader = addHeader;

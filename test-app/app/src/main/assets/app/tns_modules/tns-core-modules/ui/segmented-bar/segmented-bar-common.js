@@ -1,25 +1,25 @@
-var view = require("ui/core/view");
-var proxy = require("ui/core/proxy");
-var dependencyObservable = require("ui/core/dependency-observable");
-var bindable = require("ui/core/bindable");
-var types;
-function ensureTypes() {
-    if (!types) {
-        types = require("utils/types");
-    }
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
+var view_1 = require("../core/view");
+__export(require("../core/view"));
 var knownCollections;
 (function (knownCollections) {
     knownCollections.items = "items";
 })(knownCollections = exports.knownCollections || (exports.knownCollections = {}));
-var CHILD_SEGMENTED_BAR_ITEM = "SegmentedBarItem";
-var SegmentedBarItem = (function (_super) {
-    __extends(SegmentedBarItem, _super);
-    function SegmentedBarItem() {
+var SegmentedBarItemBase = (function (_super) {
+    __extends(SegmentedBarItemBase, _super);
+    function SegmentedBarItemBase() {
         _super.apply(this, arguments);
         this._title = "";
     }
-    Object.defineProperty(SegmentedBarItem.prototype, "title", {
+    Object.defineProperty(SegmentedBarItemBase.prototype, "title", {
         get: function () {
             return this._title;
         },
@@ -33,109 +33,88 @@ var SegmentedBarItem = (function (_super) {
         enumerable: true,
         configurable: true
     });
-    SegmentedBarItem.prototype._update = function () {
-    };
-    return SegmentedBarItem;
-}(bindable.Bindable));
-exports.SegmentedBarItem = SegmentedBarItem;
-var SegmentedBar = (function (_super) {
-    __extends(SegmentedBar, _super);
-    function SegmentedBar() {
+    return SegmentedBarItemBase;
+}(view_1.ViewBase));
+exports.SegmentedBarItemBase = SegmentedBarItemBase;
+var SegmentedBarBase = (function (_super) {
+    __extends(SegmentedBarBase, _super);
+    function SegmentedBarBase() {
         _super.apply(this, arguments);
     }
-    SegmentedBar.prototype._addArrayFromBuilder = function (name, value) {
+    SegmentedBarBase.prototype._addArrayFromBuilder = function (name, value) {
         if (name === "items") {
-            this._setValue(SegmentedBar.itemsProperty, value);
+            this.items = value;
         }
     };
-    SegmentedBar.prototype._adjustSelectedIndex = function (items) {
-        if (this.items) {
-            if (this.items.length > 0) {
-                ensureTypes();
-                if (types.isUndefined(this.selectedIndex) || (this.selectedIndex > this.items.length - 1)) {
-                    this._setValue(SegmentedBar.selectedIndexProperty, 0);
-                }
-            }
-            else {
-                this._setValue(SegmentedBar.selectedIndexProperty, undefined);
-            }
-        }
-        else {
-            this._setValue(SegmentedBar.selectedIndexProperty, undefined);
-        }
-    };
-    Object.defineProperty(SegmentedBar.prototype, "selectedIndex", {
-        get: function () {
-            return this._getValue(SegmentedBar.selectedIndexProperty);
-        },
-        set: function (value) {
-            this._setValue(SegmentedBar.selectedIndexProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(SegmentedBar.prototype, "items", {
-        get: function () {
-            return this._getValue(SegmentedBar.itemsProperty);
-        },
-        set: function (value) {
-            this._setValue(SegmentedBar.itemsProperty, value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(SegmentedBar.prototype, "selectedBackgroundColor", {
-        get: function () {
-            return this.style.selectedBackgroundColor;
-        },
-        set: function (value) {
-            this.style.selectedBackgroundColor = value;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    SegmentedBar.prototype._onBindingContextChanged = function (oldValue, newValue) {
-        _super.prototype._onBindingContextChanged.call(this, oldValue, newValue);
-        if (this.items && this.items.length > 0) {
-            var i = 0;
-            var length = this.items.length;
-            for (; i < length; i++) {
-                this.items[i].bindingContext = newValue;
-            }
-        }
-    };
-    SegmentedBar.prototype._addChildFromBuilder = function (name, value) {
-        if (name === CHILD_SEGMENTED_BAR_ITEM) {
+    SegmentedBarBase.prototype._addChildFromBuilder = function (name, value) {
+        if (name === "SegmentedBarItem") {
             if (!this.items) {
                 this.items = new Array();
             }
-            this.items.push(value);
-            this.insertTab(value);
+            var item = value;
+            this.items.push(item);
+            this._addView(item);
+            exports.selectedIndexProperty.coerce(this);
         }
     };
-    SegmentedBar.prototype.insertTab = function (tabItem, index) {
+    SegmentedBarBase.prototype.onItemsChanged = function (oldItems, newItems) {
+        if (oldItems) {
+            for (var i = 0, count = oldItems.length; i < count; i++) {
+                this._removeView(oldItems[i]);
+            }
+        }
+        if (newItems) {
+            for (var i = 0, count = newItems.length; i < count; i++) {
+                this._addView(newItems[i]);
+            }
+        }
     };
-    SegmentedBar.prototype.getValidIndex = function (index) {
-        ensureTypes();
-        var idx;
-        var itemsLength = this.items ? this.items.length : 0;
-        if (types.isNullOrUndefined(index)) {
-            idx = itemsLength - 1;
+    // TODO: Make _addView to keep its children so this method is not needed!
+    SegmentedBarBase.prototype.eachChild = function (callback) {
+        var items = this.items;
+        if (items) {
+            items.forEach(function (item, i) {
+                callback(item);
+            });
+        }
+    };
+    SegmentedBarBase.selectedIndexChangedEvent = "selectedIndexChanged";
+    return SegmentedBarBase;
+}(view_1.View));
+exports.SegmentedBarBase = SegmentedBarBase;
+/**
+ * Gets or sets the selected index dependency property of the SegmentedBar.
+ */
+exports.selectedIndexProperty = new view_1.CoercibleProperty({
+    name: "selectedIndex", defaultValue: -1,
+    valueChanged: function (target, oldValue, newValue) {
+        target.notify({ eventName: SegmentedBarBase.selectedIndexChangedEvent, object: target, oldIndex: oldValue, newIndex: newValue });
+    },
+    coerceValue: function (target, value) {
+        var items = target.items;
+        if (items) {
+            var max = items.length - 1;
+            if (value < 0) {
+                value = 0;
+            }
+            if (value > max) {
+                value = max;
+            }
         }
         else {
-            if (index < 0 || index > itemsLength) {
-                idx = itemsLength - 1;
-            }
-            else {
-                idx = index;
-            }
+            value = -1;
         }
-        return idx;
-    };
-    SegmentedBar.selectedIndexProperty = new dependencyObservable.Property("selectedIndex", "SegmentedBar", new proxy.PropertyMetadata(undefined));
-    SegmentedBar.itemsProperty = new dependencyObservable.Property("items", "SegmentedBar", new proxy.PropertyMetadata(undefined));
-    SegmentedBar.selectedIndexChangedEvent = "selectedIndexChanged";
-    return SegmentedBar;
-}(view.View));
-exports.SegmentedBar = SegmentedBar;
-//# sourceMappingURL=segmented-bar-common.js.map
+        return value;
+    },
+    valueConverter: function (v) { return parseInt(v); }
+});
+exports.selectedIndexProperty.register(SegmentedBarBase);
+exports.itemsProperty = new view_1.Property({
+    name: "items", valueChanged: function (target, oldValue, newValue) {
+        target.onItemsChanged(oldValue, newValue);
+        exports.selectedIndexProperty.coerce(target);
+    }
+});
+exports.itemsProperty.register(SegmentedBarBase);
+exports.selectedBackgroundColorProperty = new view_1.InheritedCssProperty({ name: "selectedBackgroundColor", cssName: "selected-background-color", equalityComparer: view_1.Color.equals, valueConverter: function (v) { return new view_1.Color(v); } });
+exports.selectedBackgroundColorProperty.register(view_1.Style);
